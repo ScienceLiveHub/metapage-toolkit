@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROHub Research Object Loader</title>
+    <script src="https://unpkg.com/@metapages/metaframe@0.10.9/dist/metaframe.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .separator-group {
+            flex: 0 0 150px;
+        }
+        button {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+            white-space: nowrap;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .file-list {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .file-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 10px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .file-item.selected {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .file-info {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        .status {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .ro-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 ROHub Research Object Loader</h1>
+        <p>Load datasets from ROHub Research Objects with multiple files</p>
+        
+        <div class="input-group">
+            <label for="roUrl">Research Object URL:</label>
+            <input type="text" id="roUrl" 
+                   placeholder="https://w3id.org/ro-id/your-research-object-id"
+                   value="https://w3id.org/ro-id/d5430aa5-7a8b-44fe-8d21-6a7c80ac36d4">
+        </div>
+        
+        <button onclick="exploreRO()" id="exploreBtn">
+            🔍 Explore Research Object
+        </button>
+        
+        <div id="roInfo" class="ro-info" style="display: none;"></div>
+        
+        <div id="fileList" class="file-list" style="display: none;">
+            <h3>📁 Available Datasets:</h3>
+            <div id="files"></div>
+        </div>
+        
+        <div class="controls" id="loadControls" style="display: none;">
+            <div class="separator-group">
+                <label for="separator">Separator:</label>
+                <select id="separator">
+                    <option value="auto">Auto-detect</option>
+                    <option value="tab">Tab</option>
+                    <option value="space">Space</option>
+                    <option value="comma">Comma</option>
+                    <option value="semicolon">Semicolon</option>
+                    <option value="pipe">Pipe (|)</option>
+                </select>
+            </div>
+            
+            <button onclick="loadSelectedFile()" id="loadBtn" disabled>
+                📥 Load Selected Dataset
+            </button>
+        </div>
+        
+        <div id="status" class="status">
+            Ready to explore ROHub Research Objects. Enter a RO URL and click Explore.
+        </div>
+        
+        <div id="preview" style="display: none;"></div>
+    </div>
+
+    <script>
+        let metaframe;
+        let currentRO = null;
+        let selectedFile = null;
+        let loadedData = null;
+        
+        window.addEventListener('load', function() {
+            if (typeof Metaframe !== 'undefined') {
+                metaframe = new Metaframe();
+                updateStatus('🔧 ROHub RO Loader initialized with metapage connection', 'success');
+            } else {
+                updateStatus('🔧 ROHub RO Loader initialized in standalone mode', 'info');
+            }
+        });
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            const colors = {
+                info: 'rgba(255, 255, 255, 0.1)',
+                success: 'rgba(76, 175, 80, 0.3)',
+                warning: 'rgba(255, 193, 7, 0.3)',
+                error: 'rgba(244, 67, 54, 0.3)'
+            };
+            
+            statusEl.style.background = colors[type] || colors.info;
+            statusEl.innerHTML = message;
+        }
+
+        window.exploreRO = async function() {
+            const roUrl = document.getElementById('roUrl').value.trim();
+            
+            if (!roUrl) {
+                updateStatus('❌ Please enter a Research Object URL', 'error');
+                return;
+            }
+
+            updateStatus('🔍 Exploring Research Object...', 'info');
+            document.getElementById('exploreBtn').disabled = true;
+            
+            try {
+                // Try to get RO-Crate metadata
+                let metadataUrl = roUrl;
+                if (!roUrl.includes('ro-crate-metadata.json')) {
+                    metadataUrl = roUrl.endsWith('/') ? roUrl + 'ro-crate-metadata.json' : roUrl + '/ro-crate-metadata.json';
+                }
+                
+                updateStatus('📋 Fetching RO-Crate metadata...', 'info');
+                
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(metadataUrl)}`;
+                const response = await fetch(proxyUrl);
+                
+                if (!response.ok) {
+                    throw new Error('Could not fetch RO-Crate metadata');
+                }
+                
+                const result = await response.json();
+                const metadata = JSON.parse(result.contents);
+                
+                currentRO = parseROCrate(metadata, roUrl);
+                displayROInfo(currentRO);
+                displayFiles(currentRO.datasets);
+                
+                updateStatus(`✅ Found Research Object with ${currentRO.datasets.length} datasets`, 'success');
+                
+            } catch (error) {
+                updateStatus(`❌ Error exploring RO: ${error.message}`, 'error');
+                
+                // Fallback: try to explore as direct dataset URL
+                updateStatus('🔄 Trying as direct dataset URL...', 'warning');
+                try {
+                    selectedFile = { url: roUrl, name: 'Direct Dataset', description: 'Direct dataset URL' };
+                    document.getElementById('loadControls').style.display = 'flex';
+                    document.getElementById('loadBtn').disabled = false;
+                    updateStatus('📊 Ready to load as direct dataset', 'info');
+                } catch (fallbackError) {
+                    updateStatus(`❌ Could not process URL: ${fallbackError.message}`, 'error');
+                }
+            } finally {
+                document.getElementById('exploreBtn').disabled = false;
+            }
+        }
+
+        function parseROCrate(metadata, baseUrl) {
+            const graph = metadata['@graph'] || [];
+            
+            // Find the root dataset
+            const root = graph.find(item => 
+                item['@type'] && 
+                (item['@type'].includes('Dataset') || item['@type'] === 'Dataset') &&
+                item['@id'] === './'
+            ) || graph[0];
+            
+            // Find all file/dataset entities
+            const datasets = graph.filter(item => {
+                const types = Array.isArray(item['@type']) ? item['@type'] : [item['@type']];
+                return types.includes('File') || 
+                       types.includes('Dataset') ||
+                       (item.name && (
+                           item.name.endsWith('.csv') || 
+                           item.name.endsWith('.tsv') || 
+                           item.name.endsWith('.json') ||
+                           item.name.endsWith('.txt')
+                       ));
+            }).map(item => {
+                const id = item['@id'];
+                const url = id.startsWith('http') ? id : 
+                           baseUrl.endsWith('/') ? baseUrl + id : baseUrl + '/' + id;
+                
+                return {
+                    id: id,
+                    url: url,
+                    name: item.name || id,
+                    description: item.description || 'No description',
+                    contentSize: item.contentSize,
+                    encodingFormat: item.encodingFormat,
+                    dateModified: item.dateModified
+                };
+            });
+            
+            return {
+                name: root.name || 'Research Object',
+                description: root.description || 'No description',
+                author: root.author || 'Unknown',
+                datePublished: root.datePublished,
+                datasets: datasets
+            };
+        }
+
+        function displayROInfo(ro) {
+            const roInfoEl = document.getElementById('roInfo');
+            roInfoEl.innerHTML = `
+                <h3>📦 Research Object Information</h3>
+                <strong>Name:</strong> ${ro.name}<br>
+                <strong>Description:</strong> ${ro.description}<br>
+                <strong>Author:</strong> ${ro.author}<br>
+                ${ro.datePublished ? `<strong>Published:</strong> ${ro.datePublished}<br>` : ''}
+                <strong>Datasets found:</strong> ${ro.datasets.length}
+            `;
+            roInfoEl.style.display = 'block';
+        }
+
+        function displayFiles(datasets) {
+            const fileListEl = document.getElementById('fileList');
+            const filesEl = document.getElementById('files');
+            
+            if (datasets.length === 0) {
+                filesEl.innerHTML = '<p>No suitable datasets found in this Research Object.</p>';
+                fileListEl.style.display = 'block';
+                return;
+            }
+            
+            filesEl.innerHTML = '';
+            
+            datasets.forEach((dataset, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.onclick = () => selectFile(dataset, fileItem);
+                
+                fileItem.innerHTML = `
+                    <div class="file-name">📄 ${dataset.name}</div>
+                    <div class="file-info">
+                        ${dataset.description}<br>
+                        ${dataset.contentSize ? `Size: ${dataset.contentSize} | ` : ''}
+                        ${dataset.encodingFormat ? `Format: ${dataset.encodingFormat}` : ''}
+                    </div>
+                `;
+                
+                filesEl.appendChild(fileItem);
+            });
+            
+            fileListEl.style.display = 'block';
+            document.getElementById('loadControls').style.display = 'flex';
+        }
+
+        function selectFile(dataset, element) {
+            // Remove previous selection
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Select current
+            element.classList.add('selected');
+            selectedFile = dataset;
+            document.getElementById('loadBtn').disabled = false;
+            
+            updateStatus(`📁 Selected: ${dataset.name}`, 'info');
+        }
+
+        window.loadSelectedFile = async function() {
+            if (!selectedFile) {
+                updateStatus('❌ Please select a dataset to load', 'error');
+                return;
+            }
+
+            updateStatus('🔄 Loading selected dataset...', 'info');
+            document.getElementById('loadBtn').disabled = true;
+
+            try {
+                const separatorChoice = document.getElementById('separator').value;
+                
+                // Fetch the dataset
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(selectedFile.url)}`;
+                const response = await fetch(proxyUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch dataset: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                const content = result.contents;
+                
+                if (!content || content.trim().length === 0) {
+                    throw new Error('Dataset is empty');
+                }
+
+                // Parse the data (reusing parsing logic from previous version)
+                const parsedData = await parseDataContent(content, separatorChoice);
+                
+                // Convert to climate format
+                const climateData = convertToClimateFormat(parsedData, selectedFile.name);
+                
+                // Store and output
+                loadedData = climateData;
+                
+                if (metaframe) {
+                    metaframe.setOutput('climateData', climateData);
+                    updateStatus(`✅ Successfully loaded ${climateData.length} rows from "${selectedFile.name}" and sent to metapage`, 'success');
+                } else {
+                    updateStatus(`✅ Successfully loaded ${climateData.length} rows from "${selectedFile.name}" in standalone mode`, 'success');
+                }
+                
+                // Show preview
+                showDataPreview(climateData);
+                
+            } catch (error) {
+                updateStatus(`❌ Error loading dataset: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('loadBtn').disabled = false;
+            }
+        }
+
+        async function parseDataContent(content, separatorChoice) {
+            let separator;
+            const firstLine = content.split('\n')[0];
+            
+            if (separatorChoice === 'auto') {
+                const separators = ['\t', ',', ';', '|', ' '];
+                const counts = separators.map(sep => ({
+                    sep: sep,
+                    count: firstLine.split(sep).length - 1
+                }));
+                
+                const bestSep = counts.filter(c => c.count > 1).sort((a, b) => b.count - a.count)[0];
+                separator = bestSep ? bestSep.sep : ' ';
+                if (separator === ' ') separator = /\s+/;
+            } else {
+                const separatorMap = {
+                    'tab': '\t',
+                    'comma': ',',
+                    'semicolon': ';',
+                    'pipe': '|',
+                    'space': /\s+/
+                };
+                separator = separatorMap[separatorChoice];
+            }
+            
+            // Parse data
+            const lines = content.trim().split('\n').filter(line => line.trim());
+            
+            if (lines.length < 2) {
+                throw new Error('Dataset must have at least a header and one data row');
+            }
+            
+            const headers = lines[0]
+                .split(separator)
+                .map(h => h.trim().replace(/"/g, ''))
+                .filter(h => h.length > 0);
+            
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i]
+                    .split(separator)
+                    .map(v => v.trim().replace(/"/g, ''));
+                
+                if (values.length === headers.length) {
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        const value = values[index];
+                        row[header] = isNaN(value) || value === '' ? value : parseFloat(value);
+                    });
+                    data.push(row);
+                }
+            }
+            
+            return data;
+        }
+
+        function convertToClimateFormat(data, sourceName) {
+            if (data.length === 0) return [];
+            
+            const headers = Object.keys(data[0]);
+            
+            return data.map((row, index) => {
+                // Try to find year
+                let year = 1950 + index;
+                for (const header of headers) {
+                    if (row[header] && typeof row[header] === 'string') {
+                        const yearMatch = row[header].match(/(\d{4})/);
+                        if (yearMatch) {
+                            year = parseInt(yearMatch[1]);
+                            break;
+                        }
+                    }
+                }
+                
+                // Find temperature
+                let temperature = 14;
+                const tempColumns = headers.filter(h => 
+                    typeof row[h] === 'number' && 
+                    (h.toLowerCase().includes('temp') || 
+                     h.toLowerCase().includes('avg') ||
+                     h.toLowerCase().includes('anomal'))
+                );
+                
+                if (tempColumns.length > 0) {
+                    temperature = row[tempColumns[0]];
+                }
+                
+                const climateRow = {
+                    year: year,
+                    temperature: temperature,
+                    anomaly: temperature - 14,
+                    source: sourceName || 'ROHub Dataset'
+                };
+                
+                // Add all original columns
+                headers.forEach(header => {
+                    climateRow[header] = row[header];
+                });
+                
+                return climateRow;
+            });
+        }
+
+        function showDataPreview(data) {
+            // Implementation similar to previous version
+            const previewEl = document.getElementById('preview');
+            const columns = Object.keys(data[0]).filter(key => key !== 'source');
+            
+            let html = `<div class="status"><strong>📊 Data Preview</strong><br>`;
+            html += `Loaded ${data.length} records with columns: ${columns.join(', ')}</div>`;
+            
+            previewEl.innerHTML = html;
+            previewEl.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

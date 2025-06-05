@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Warming Stripes Visualizer</title>
+    <script src="https://unpkg.com/@metapages/metaframe@0.10.9/dist/metaframe.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+            align-items: end;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 600;
+        }
+        select, input {
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 14px;
+        }
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .canvas-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        #stripesCanvas {
+            width: 100%;
+            height: 200px;
+            cursor: crosshair;
+            border: 2px solid #eee;
+            border-radius: 5px;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+        .info-panel {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .dataset-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌡️ Enhanced Warming Stripes</h1>
+        <p>Interactive climate visualization with column selection and multiple colormaps</p>
+        
+        <div id="datasetInfo" class="dataset-info" style="display: none;">
+            <strong>📊 Dataset loaded:</strong> <span id="datasetName">None</span><br>
+            <strong>📋 Available columns:</strong> <span id="availableColumns">None</span>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>X-Axis (Time/Year):</label>
+                <select id="xColumn">
+                    <option value="">Select X column...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Y-Axis (Values):</label>
+                <select id="yColumn">
+                    <option value="">Select Y column...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Start Year:</label>
+                <input type="number" id="startYear" value="1950" min="1800" max="2030">
+            </div>
+            
+            <div class="control-group">
+                <label>End Year:</label>
+                <input type="number" id="endYear" value="2023" min="1800" max="2030">
+            </div>
+            
+            <div class="control-group">
+                <label>Colormap:</label>
+                <select id="colorScale">
+                    <option value="classic">Classic (Blue-Red)</option>
+                    <option value="viridis">Viridis</option>
+                    <option value="plasma">Plasma</option>
+                    <option value="coolwarm">Cool-Warm</option>
+                    <option value="rdbu">Red-Blue</option>
+                    <option value="spectral">Spectral</option>
+                    <option value="turbo">Turbo</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <button onclick="updateVisualization()">🔄 Update Stripes</button>
+            </div>
+            
+            <div class="control-group">
+                <button onclick="exportImage()" style="background: linear-gradient(45deg, #4ecdc4, #44a08d);">📸 Export PNG</button>
+            </div>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="stripesCanvas"></canvas>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" id="legendLow"></div>
+                    <span>Low</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" id="legendMid"></div>
+                    <span>Average</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" id="legendHigh"></div>
+                    <span>High</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div id="dataInfo">Waiting for data from ROHub loader...</div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        let metaframe;
+        let climateData = [];
+        let canvas, ctx;
+        let tooltip;
+        
+        // Enhanced color scales
+        const colorScales = {
+            classic: {
+                colors: [[8, 81, 156], [255, 255, 255], [165, 15, 21]],
+                positions: [0, 0.5, 1]
+            },
+            viridis: {
+                colors: [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]],
+                positions: [0, 0.25, 0.5, 0.75, 1]
+            },
+            plasma: {
+                colors: [[13, 8, 135], [84, 2, 163], [139, 10, 165], [185, 50, 137], [219, 92, 104], [244, 136, 73], [254, 188, 43], [240, 249, 33]],
+                positions: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1]
+            },
+            coolwarm: {
+                colors: [[59, 76, 192], [144, 178, 254], [221, 220, 219], [245, 156, 125], [180, 4, 38]],
+                positions: [0, 0.25, 0.5, 0.75, 1]
+            },
+            rdbu: {
+                colors: [[5, 48, 97], [67, 147, 195], [247, 247, 247], [214, 96, 77], [103, 0, 31]],
+                positions: [0, 0.25, 0.5, 0.75, 1]
+            },
+            spectral: {
+                colors: [[158, 1, 66], [213, 62, 79], [244, 109, 67], [253, 174, 97], [254, 224, 139], [255, 255, 191], [230, 245, 152], [171, 221, 164], [102, 194, 165], [50, 136, 189], [94, 79, 162]],
+                positions: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+            },
+            turbo: {
+                colors: [[48, 18, 59], [80, 2, 148], [182, 54, 121], [251, 135, 97], [254, 206, 84], [239, 254, 240]],
+                positions: [0, 0.2, 0.4, 0.6, 0.8, 1]
+            }
+        };
+
+        window.addEventListener('load', function() {
+            canvas = document.getElementById('stripesCanvas');
+            ctx = canvas.getContext('2d');
+            tooltip = document.getElementById('tooltip');
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseleave', hideTooltip);
+            
+            if (typeof Metaframe !== 'undefined') {
+                metaframe = new Metaframe();
+                metaframe.onInput('climateData', handleClimateData);
+                console.log('Enhanced Warming Stripes initialized');
+            } else {
+                console.log('Running in standalone mode');
+                generateSampleData();
+            }
+        });
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width - 40;
+            canvas.height = 200;
+            if (climateData.length > 0) {
+                drawWarmingStripes();
+            }
+        }
+
+        function handleClimateData(data) {
+            if (data && Array.isArray(data)) {
+                climateData = data;
+                updateColumnOptions();
+                updateDatasetInfo();
+                drawWarmingStripes();
+                console.log('Received climate data:', data.length, 'records');
+            }
+        }
+
+        function updateColumnOptions() {
+            if (climateData.length === 0) return;
+            
+            const columns = Object.keys(climateData[0]).filter(key => 
+                key !== 'source' && typeof climateData[0][key] !== 'undefined'
+            );
+            
+            const xSelect = document.getElementById('xColumn');
+            const ySelect = document.getElementById('yColumn');
+            
+            // Clear options
+            xSelect.innerHTML = '<option value="">Select X column...</option>';
+            ySelect.innerHTML = '<option value="">Select Y column...</option>';
+            
+            columns.forEach(col => {
+                const xOption = document.createElement('option');
+                xOption.value = col;
+                xOption.textContent = col;
+                xSelect.appendChild(xOption);
+                
+                const yOption = document.createElement('option');
+                yOption.value = col;
+                yOption.textContent = col;
+                ySelect.appendChild(yOption);
+            });
+            
+            // Auto-select reasonable defaults
+            const yearCol = columns.find(c => 
+                c.toLowerCase().includes('year') || 
+                c === 'year' ||
+                (climateData[0][c] && String(climateData[0][c]).match(/\d{4}/))
+            );
+            
+            const valueCol = columns.find(c => 
+                c.toLowerCase().includes('temp') || 
+                c.toLowerCase().includes('anomal') ||
+                c.toLowerCase().includes('avg') ||
+                (typeof climateData[0][c] === 'number' && c !== yearCol)
+            );
+            
+            if (yearCol) xSelect.value = yearCol;
+            if (valueCol) ySelect.value = valueCol;
+        }
+
+        function updateDatasetInfo() {
+            const datasetInfo = document.getElementById('datasetInfo');
+            const datasetName = document.getElementById('datasetName');
+            const availableColumns = document.getElementById('availableColumns');
+            
+            if (climateData.length > 0) {
+                const source = climateData[0].source || 'Unknown';
+                const columns = Object.keys(climateData[0]).filter(key => key !== 'source');
+                
+                datasetName.textContent = `${source} (${climateData.length} records)`;
+                availableColumns.textContent = columns.join(', ');
+                datasetInfo.style.display = 'block';
+            }
+        }
+
+        function generateSampleData() {
+            const data = [];
+            for (let year = 1950; year <= 2023; year++) {
+                const temp = 14 + (year - 1950) * 0.02 + (Math.random() - 0.5) * 2;
+                data.push({
+                    year: year,
+                    temperature: Math.round(temp * 100) / 100,
+                    anomaly: Math.round((temp - 14) * 100) / 100,
+                    source: 'Sample Data'
+                });
+            }
+            climateData = data;
+            updateColumnOptions();
+            updateDatasetInfo();
+            drawWarmingStripes();
+        }
+
+        function getColorFromScale(value, scaleName) {
+            const scale = colorScales[scaleName];
+            const colors = scale.colors;
+            const positions = scale.positions;
+            
+            // Clamp value between 0 and 1
+            value = Math.max(0, Math.min(1, value));
+            
+            // Find the two colors to interpolate between
+            let i = 0;
+            while (i < positions.length - 1 && value > positions[i + 1]) {
+                i++;
+            }
+            
+            if (i === positions.length - 1) {
+                return colors[i];
+            }
+            
+            // Interpolate between colors[i] and colors[i+1]
+            const t = (value - positions[i]) / (positions[i + 1] - positions[i]);
+            const color1 = colors[i];
+            const color2 = colors[i + 1];
+            
+            return [
+                Math.round(color1[0] + (color2[0] - color1[0]) * t),
+                Math.round(color1[1] + (color2[1] - color1[1]) * t),
+                Math.round(color1[2] + (color2[2] - color1[2]) * t)
+            ];
+        }
+
+        function updateLegend(scaleName, minVal, maxVal) {
+            const legendLow = document.getElementById('legendLow');
+            const legendMid = document.getElementById('legendMid');
+            const legendHigh = document.getElementById('legendHigh');
+            
+            const lowColor = getColorFromScale(0, scaleName);
+            const midColor = getColorFromScale(0.5, scaleName);
+            const highColor = getColorFromScale(1, scaleName);
+            
+            legendLow.style.background = `rgb(${lowColor.join(',')})`;
+            legendMid.style.background = `rgb(${midColor.join(',')})`;
+            legendHigh.style.background = `rgb(${highColor.join(',')})`;
+        }
+
+        window.updateVisualization = function() {
+            drawWarmingStripes();
+        }
+
+        function drawWarmingStripes() {
+            const xColumn = document.getElementById('xColumn').value;
+            const yColumn = document.getElementById('yColumn').value;
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const endYear = parseInt(document.getElementById('endYear').value);
+            const colorScale = document.getElementById('colorScale').value;
+            const dataInfo = document.getElementById('dataInfo');
+            
+            if (climateData.length === 0) {
+                dataInfo.innerHTML = 'No data loaded. Use the ROHub Data Loader to load climate data.';
+                return;
+            }
+            
+            if (!xColumn || !yColumn) {
+                dataInfo.innerHTML = 'Please select both X and Y columns to create warming stripes.';
+                return;
+            }
+            
+            // Filter and sort data
+            let filteredData = climateData.filter(d => {
+                const xVal = d[xColumn];
+                if (xColumn.toLowerCase().includes('year') || typeof xVal === 'string') {
+                    const year = parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
+                    return year >= startYear && year <= endYear;
+                }
+                return true;
+            });
+            
+            // Sort by X column
+            filteredData.sort((a, b) => {
+                let aVal = a[xColumn];
+                let bVal = b[xColumn];
+                
+                if (typeof aVal === 'string' && aVal.match(/\d{4}/)) {
+                    aVal = parseInt(aVal.match(/(\d{4})/)[1]);
+                }
+                if (typeof bVal === 'string' && bVal.match(/\d{4}/)) {
+                    bVal = parseInt(bVal.match(/(\d{4})/)[1]);
+                }
+                
+                return aVal - bVal;
+            });
+            
+            if (filteredData.length === 0) {
+                dataInfo.innerHTML = 'No data in selected range.';
+                return;
+            }
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Get Y values for normalization
+            const yValues = filteredData.map(d => parseFloat(d[yColumn])).filter(v => !isNaN(v));
+            const minVal = Math.min(...yValues);
+            const maxVal = Math.max(...yValues);
+            const avgVal = yValues.reduce((a, b) => a + b, 0) / yValues.length;
+            
+            // Update legend
+            updateLegend(colorScale, minVal, maxVal);
+            
+            // Draw stripes
+            const stripeWidth = canvas.width / filteredData.length;
+            
+            filteredData.forEach((dataPoint, index) => {
+                const yVal = parseFloat(dataPoint[yColumn]);
+                if (isNaN(yVal)) return;
+                
+                // Normalize to 0-1 range
+                const normalized = (yVal - minVal) / (maxVal - minVal);
+                
+                const color = getColorFromScale(normalized, colorScale);
+                ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                ctx.fillRect(index * stripeWidth, 0, stripeWidth, canvas.height);
+            });
+            
+            // Update info
+            dataInfo.innerHTML = `
+                <strong>📊 Visualization:</strong> ${filteredData.length} data points<br>
+                <strong>📈 X-Axis:</strong> ${xColumn}<br>
+                <strong>📊 Y-Axis:</strong> ${yColumn} (${minVal.toFixed(2)} to ${maxVal.toFixed(2)})<br>
+                <strong>🎨 Colormap:</strong> ${colorScale}<br>
+                <strong>📅 Range:</strong> ${startYear} - ${endYear}
+            `;
+        }
+
+        function handleMouseMove(event) {
+            const xColumn = document.getElementById('xColumn').value;
+            const yColumn = document.getElementById('yColumn').value;
+            
+            if (!xColumn || !yColumn || climateData.length === 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const endYear = parseInt(document.getElementById('endYear').value);
+            
+            let filteredData = climateData.filter(d => {
+                const xVal = d[xColumn];
+                if (xColumn.toLowerCase().includes('year') || typeof xVal === 'string') {
+                    const year = parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
+                    return year >= startYear && year <= endYear;
+                }
+                return true;
+            });
+            
+            const stripeWidth = canvas.width / filteredData.length;
+            const index = Math.floor(x / stripeWidth);
+            
+            if (index >= 0 && index < filteredData.length) {
+                const dataPoint = filteredData[index];
+                showTooltip(event.clientX, event.clientY, dataPoint, xColumn, yColumn);
+            }
+        }
+
+        function showTooltip(x, y, dataPoint, xCol, yCol) {
+            tooltip.innerHTML = `
+                <strong>${xCol}:</strong> ${dataPoint[xCol]}<br>
+                <strong>${yCol}:</strong> ${dataPoint[yCol]}<br>
+                <strong>Source:</strong> ${dataPoint.source || 'Unknown'}
+            `;
+            tooltip.style.left = x + 10 + 'px';
+            tooltip.style.top = y - 10 + 'px';
+            tooltip.style.opacity = '1';
+        }
+
+        function hideTooltip() {
+            tooltip.style.opacity = '0';
+        }
+
+        window.exportImage = function() {
+            const link = document.createElement('a');
+            link.download = 'warming-stripes.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>
