@@ -3,524 +3,666 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ROHub Research Object Loader</title>
-    <script src="https://unpkg.com/@metapages/metaframe@0.10.9/dist/metaframe.js"></script>
+    <title>ROHub Dataset Viewer</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
         }
+        
         .container {
-            background: rgba(255, 255, 255, 0.1);
+            background: white;
             border-radius: 15px;
-            padding: 25px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            max-width: 900px;
-            margin: 0 auto;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
         }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 2px solid #e9ecef;
+        }
+        
         .input-group {
             margin-bottom: 20px;
         }
+        
         label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            font-size: 14px;
+            color: #495057;
+            font-size: 1.1em;
         }
-        input, select {
+        
+        input, textarea {
             width: 100%;
-            padding: 12px;
-            border: none;
+            padding: 15px;
+            border: 2px solid #ddd;
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
-            font-size: 14px;
+            font-size: 16px;
+            transition: all 0.3s ease;
             box-sizing: border-box;
+            font-family: 'Courier New', monospace;
         }
-        .controls {
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button-group {
             display: flex;
             gap: 15px;
-            align-items: end;
+            margin: 20px 0;
             flex-wrap: wrap;
-            margin-bottom: 20px;
         }
-        .separator-group {
-            flex: 0 0 150px;
-        }
+        
         button {
-            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            background: linear-gradient(45deg, #667eea, #764ba2);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 15px 25px;
             border-radius: 8px;
             cursor: pointer;
+            font-size: 16px;
             font-weight: 600;
-            transition: transform 0.2s;
-            white-space: nowrap;
+            transition: all 0.3s ease;
+            min-width: 140px;
         }
-        button:hover {
+        
+        button:hover:not(:disabled) {
             transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
         }
+        
         button:disabled {
-            background: rgba(255, 255, 255, 0.3);
+            background: #6c757d;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
-        .file-list {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .file-item {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-            padding: 10px;
-            margin: 8px 0;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .file-item:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        .file-item.selected {
-            background: rgba(76, 175, 80, 0.3);
-            border: 1px solid rgba(76, 175, 80, 0.5);
-        }
-        .file-name {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        .file-info {
-            font-size: 12px;
-            opacity: 0.8;
-        }
+        
         .status {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            padding: 15px;
             margin: 20px 0;
-            font-size: 14px;
-            line-height: 1.4;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .ro-info {
-            background: rgba(255, 255, 255, 0.1);
+        
+        .status.loading {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 2px solid #1976d2;
+        }
+        
+        .status.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 2px solid #4caf50;
+        }
+        
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #f44336;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #1976d2;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .data-viewer {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            margin-top: 25px;
+            overflow: hidden;
+        }
+        
+        .data-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            font-weight: 600;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .data-content {
+            padding: 25px;
+            max-height: 600px;
+            overflow-y: auto;
+            background: white;
+        }
+        
+        .data-content pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            background: #f8f9fa;
+            padding: 20px;
             border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
+            border: 1px solid #e9ecef;
+        }
+        
+        .json-viewer {
+            font-family: 'Courier New', monospace;
+        }
+        
+        .json-key {
+            color: #0066cc;
+            font-weight: bold;
+        }
+        
+        .json-string {
+            color: #009900;
+        }
+        
+        .json-number {
+            color: #cc6600;
+        }
+        
+        .json-boolean {
+            color: #cc0066;
+            font-weight: bold;
+        }
+        
+        .data-stats {
+            background: #e3f2fd;
+            padding: 15px 20px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 14px;
+            color: #1565c0;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .download-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .download-btn {
+            background: #28a745;
+            margin: 0 10px;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+        }
+        
+        .format-selector {
+            margin: 15px 0;
+        }
+        
+        .format-selector select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .proxy-status {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 10px;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔬 ROHub Research Object Loader</h1>
-        <p>Load datasets from ROHub Research Objects with multiple files</p>
+        <h1>🔬 ROHub Dataset Viewer</h1>
         
-        <div class="input-group">
-            <label for="roUrl">Research Object URL:</label>
-            <input type="text" id="roUrl" 
-                   placeholder="https://w3id.org/ro-id/your-research-object-id"
-                   value="https://w3id.org/ro-id/d5430aa5-7a8b-44fe-8d21-6a7c80ac36d4">
-        </div>
-        
-        <button onclick="exploreRO()" id="exploreBtn">
-            🔍 Explore Research Object
-        </button>
-        
-        <div id="roInfo" class="ro-info" style="display: none;"></div>
-        
-        <div id="fileList" class="file-list" style="display: none;">
-            <h3>📁 Available Datasets:</h3>
-            <div id="files"></div>
-        </div>
-        
-        <div class="controls" id="loadControls" style="display: none;">
-            <div class="separator-group">
-                <label for="separator">Separator:</label>
-                <select id="separator">
-                    <option value="auto">Auto-detect</option>
-                    <option value="tab">Tab</option>
-                    <option value="space">Space</option>
-                    <option value="comma">Comma</option>
-                    <option value="semicolon">Semicolon</option>
-                    <option value="pipe">Pipe (|)</option>
-                </select>
+        <div class="input-section">
+            <div class="input-group">
+                <label for="rohubUrl">🔗 ROHub Resource URL:</label>
+                <textarea id="rohubUrl" rows="3" placeholder="Paste your ROHub resource URL here...">https://w3id.org/ro-id/d5430aa5-7a8b-44fe-8d21-6a7c80ac36d4/resources/8d4cb501-4697-45ed-be43-65e001e07e8f</textarea>
             </div>
             
-            <button onclick="loadSelectedFile()" id="loadBtn" disabled>
-                📥 Load Selected Dataset
-            </button>
+            <div class="button-group">
+                <button onclick="loadDataset()">📥 Load Dataset</button>
+                <button onclick="clearData()">🗑️ Clear</button>
+                <button id="downloadBtn" onclick="downloadData()" disabled>💾 Download</button>
+            </div>
+            
+            <div class="proxy-status">
+                Using CORS proxy to bypass browser restrictions
+            </div>
         </div>
         
-        <div id="status" class="status">
-            Ready to explore ROHub Research Objects. Enter a RO URL and click Explore.
+        <div id="status"></div>
+        
+        <div id="dataViewer" class="data-viewer" style="display: none;">
+            <div class="data-header">
+                <span id="dataTitle">📊 Dataset Content</span>
+                <span id="dataSize"></span>
+            </div>
+            <div class="data-content">
+                <div id="dataDisplay"></div>
+            </div>
+            <div class="data-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="sizeBytes">-</div>
+                    <div>Size (bytes)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="dataType">-</div>
+                    <div>Data Type</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="loadTime">-</div>
+                    <div>Load Time</div>
+                </div>
+            </div>
         </div>
         
-        <div id="preview" style="display: none;"></div>
+        <div id="downloadSection" class="download-section" style="display: none;">
+            <h3>💾 Download Options</h3>
+            <div class="format-selector">
+                <label>Format: </label>
+                <select id="downloadFormat">
+                    <option value="original">Original Format</option>
+                    <option value="json">JSON (if applicable)</option>
+                    <option value="txt">Text File</option>
+                    <option value="csv">CSV (if tabular)</option>
+                </select>
+            </div>
+            <button class="download-btn" onclick="downloadData()">⬬ Download File</button>
+        </div>
     </div>
 
     <script>
-        let metaframe;
-        let currentRO = null;
-        let selectedFile = null;
         let loadedData = null;
+        let loadStartTime = 0;
+        let currentDataType = 'unknown';
         
-        window.addEventListener('load', function() {
-            if (typeof Metaframe !== 'undefined') {
-                metaframe = new Metaframe();
-                updateStatus('🔧 ROHub RO Loader initialized with metapage connection', 'success');
-            } else {
-                updateStatus('🔧 ROHub RO Loader initialized in standalone mode', 'info');
-            }
-        });
-
-        function updateStatus(message, type = 'info') {
-            const statusEl = document.getElementById('status');
-            const colors = {
-                info: 'rgba(255, 255, 255, 0.1)',
-                success: 'rgba(76, 175, 80, 0.3)',
-                warning: 'rgba(255, 193, 7, 0.3)',
-                error: 'rgba(244, 67, 54, 0.3)'
-            };
+        async function loadDataset() {
+            const rohubUrl = document.getElementById('rohubUrl').value.trim();
             
-            statusEl.style.background = colors[type] || colors.info;
-            statusEl.innerHTML = message;
-        }
-
-        window.exploreRO = async function() {
-            const roUrl = document.getElementById('roUrl').value.trim();
-            
-            if (!roUrl) {
-                updateStatus('❌ Please enter a Research Object URL', 'error');
+            if (!rohubUrl) {
+                showStatus('❌ Please enter a ROHub URL', 'error');
                 return;
             }
-
-            updateStatus('🔍 Exploring Research Object...', 'info');
-            document.getElementById('exploreBtn').disabled = true;
             
-            try {
-                // Try to get RO-Crate metadata
-                let metadataUrl = roUrl;
-                if (!roUrl.includes('ro-crate-metadata.json')) {
-                    metadataUrl = roUrl.endsWith('/') ? roUrl + 'ro-crate-metadata.json' : roUrl + '/ro-crate-metadata.json';
+            // Validate URL format
+            const urlPattern = /https:\/\/w3id\.org\/ro-id\/([a-f0-9-]+)\/resources\/([a-f0-9-]+)/;
+            if (!urlPattern.test(rohubUrl)) {
+                showStatus('❌ Invalid ROHub URL format', 'error');
+                return;
+            }
+            
+            loadStartTime = Date.now();
+            showStatus('🔄 Loading dataset...', 'loading');
+            
+            // Try multiple CORS proxy services
+            const proxies = [
+                {
+                    name: 'AllOrigins',
+                    url: `https://api.allorigins.win/get?url=${encodeURIComponent(rohubUrl)}`,
+                    extract: (data) => data.contents
+                },
+                {
+                    name: 'CORS Proxy',
+                    url: `https://corsproxy.io/?${encodeURIComponent(rohubUrl)}`,
+                    extract: (data) => data
+                },
+                {
+                    name: 'ThingProxy',
+                    url: `https://thingproxy.freeboard.io/fetch/${rohubUrl}`,
+                    extract: (data) => data
                 }
-                
-                updateStatus('📋 Fetching RO-Crate metadata...', 'info');
-                
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(metadataUrl)}`;
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) {
-                    throw new Error('Could not fetch RO-Crate metadata');
-                }
-                
-                const result = await response.json();
-                const metadata = JSON.parse(result.contents);
-                
-                currentRO = parseROCrate(metadata, roUrl);
-                displayROInfo(currentRO);
-                displayFiles(currentRO.datasets);
-                
-                updateStatus(`✅ Found Research Object with ${currentRO.datasets.length} datasets`, 'success');
-                
-            } catch (error) {
-                updateStatus(`❌ Error exploring RO: ${error.message}`, 'error');
-                
-                // Fallback: try to explore as direct dataset URL
-                updateStatus('🔄 Trying as direct dataset URL...', 'warning');
+            ];
+            
+            for (let proxy of proxies) {
                 try {
-                    selectedFile = { url: roUrl, name: 'Direct Dataset', description: 'Direct dataset URL' };
-                    document.getElementById('loadControls').style.display = 'flex';
-                    document.getElementById('loadBtn').disabled = false;
-                    updateStatus('📊 Ready to load as direct dataset', 'info');
-                } catch (fallbackError) {
-                    updateStatus(`❌ Could not process URL: ${fallbackError.message}`, 'error');
-                }
-            } finally {
-                document.getElementById('exploreBtn').disabled = false;
-            }
-        }
-
-        function parseROCrate(metadata, baseUrl) {
-            const graph = metadata['@graph'] || [];
-            
-            // Find the root dataset
-            const root = graph.find(item => 
-                item['@type'] && 
-                (item['@type'].includes('Dataset') || item['@type'] === 'Dataset') &&
-                item['@id'] === './'
-            ) || graph[0];
-            
-            // Find all file/dataset entities
-            const datasets = graph.filter(item => {
-                const types = Array.isArray(item['@type']) ? item['@type'] : [item['@type']];
-                return types.includes('File') || 
-                       types.includes('Dataset') ||
-                       (item.name && (
-                           item.name.endsWith('.csv') || 
-                           item.name.endsWith('.tsv') || 
-                           item.name.endsWith('.json') ||
-                           item.name.endsWith('.txt')
-                       ));
-            }).map(item => {
-                const id = item['@id'];
-                const url = id.startsWith('http') ? id : 
-                           baseUrl.endsWith('/') ? baseUrl + id : baseUrl + '/' + id;
-                
-                return {
-                    id: id,
-                    url: url,
-                    name: item.name || id,
-                    description: item.description || 'No description',
-                    contentSize: item.contentSize,
-                    encodingFormat: item.encodingFormat,
-                    dateModified: item.dateModified
-                };
-            });
-            
-            return {
-                name: root.name || 'Research Object',
-                description: root.description || 'No description',
-                author: root.author || 'Unknown',
-                datePublished: root.datePublished,
-                datasets: datasets
-            };
-        }
-
-        function displayROInfo(ro) {
-            const roInfoEl = document.getElementById('roInfo');
-            roInfoEl.innerHTML = `
-                <h3>📦 Research Object Information</h3>
-                <strong>Name:</strong> ${ro.name}<br>
-                <strong>Description:</strong> ${ro.description}<br>
-                <strong>Author:</strong> ${ro.author}<br>
-                ${ro.datePublished ? `<strong>Published:</strong> ${ro.datePublished}<br>` : ''}
-                <strong>Datasets found:</strong> ${ro.datasets.length}
-            `;
-            roInfoEl.style.display = 'block';
-        }
-
-        function displayFiles(datasets) {
-            const fileListEl = document.getElementById('fileList');
-            const filesEl = document.getElementById('files');
-            
-            if (datasets.length === 0) {
-                filesEl.innerHTML = '<p>No suitable datasets found in this Research Object.</p>';
-                fileListEl.style.display = 'block';
-                return;
-            }
-            
-            filesEl.innerHTML = '';
-            
-            datasets.forEach((dataset, index) => {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'file-item';
-                fileItem.onclick = () => selectFile(dataset, fileItem);
-                
-                fileItem.innerHTML = `
-                    <div class="file-name">📄 ${dataset.name}</div>
-                    <div class="file-info">
-                        ${dataset.description}<br>
-                        ${dataset.contentSize ? `Size: ${dataset.contentSize} | ` : ''}
-                        ${dataset.encodingFormat ? `Format: ${dataset.encodingFormat}` : ''}
-                    </div>
-                `;
-                
-                filesEl.appendChild(fileItem);
-            });
-            
-            fileListEl.style.display = 'block';
-            document.getElementById('loadControls').style.display = 'flex';
-        }
-
-        function selectFile(dataset, element) {
-            // Remove previous selection
-            document.querySelectorAll('.file-item').forEach(item => {
-                item.classList.remove('selected');
-            });
-            
-            // Select current
-            element.classList.add('selected');
-            selectedFile = dataset;
-            document.getElementById('loadBtn').disabled = false;
-            
-            updateStatus(`📁 Selected: ${dataset.name}`, 'info');
-        }
-
-        window.loadSelectedFile = async function() {
-            if (!selectedFile) {
-                updateStatus('❌ Please select a dataset to load', 'error');
-                return;
-            }
-
-            updateStatus('🔄 Loading selected dataset...', 'info');
-            document.getElementById('loadBtn').disabled = true;
-
-            try {
-                const separatorChoice = document.getElementById('separator').value;
-                
-                // Fetch the dataset
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(selectedFile.url)}`;
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch dataset: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                const content = result.contents;
-                
-                if (!content || content.trim().length === 0) {
-                    throw new Error('Dataset is empty');
-                }
-
-                // Parse the data (reusing parsing logic from previous version)
-                const parsedData = await parseDataContent(content, separatorChoice);
-                
-                // Convert to climate format
-                const climateData = convertToClimateFormat(parsedData, selectedFile.name);
-                
-                // Store and output
-                loadedData = climateData;
-                
-                if (metaframe) {
-                    metaframe.setOutput('climateData', climateData);
-                    updateStatus(`✅ Successfully loaded ${climateData.length} rows from "${selectedFile.name}" and sent to metapage`, 'success');
-                } else {
-                    updateStatus(`✅ Successfully loaded ${climateData.length} rows from "${selectedFile.name}" in standalone mode`, 'success');
-                }
-                
-                // Show preview
-                showDataPreview(climateData);
-                
-            } catch (error) {
-                updateStatus(`❌ Error loading dataset: ${error.message}`, 'error');
-            } finally {
-                document.getElementById('loadBtn').disabled = false;
-            }
-        }
-
-        async function parseDataContent(content, separatorChoice) {
-            let separator;
-            const firstLine = content.split('\n')[0];
-            
-            if (separatorChoice === 'auto') {
-                const separators = ['\t', ',', ';', '|', ' '];
-                const counts = separators.map(sep => ({
-                    sep: sep,
-                    count: firstLine.split(sep).length - 1
-                }));
-                
-                const bestSep = counts.filter(c => c.count > 1).sort((a, b) => b.count - a.count)[0];
-                separator = bestSep ? bestSep.sep : ' ';
-                if (separator === ' ') separator = /\s+/;
-            } else {
-                const separatorMap = {
-                    'tab': '\t',
-                    'comma': ',',
-                    'semicolon': ';',
-                    'pipe': '|',
-                    'space': /\s+/
-                };
-                separator = separatorMap[separatorChoice];
-            }
-            
-            // Parse data
-            const lines = content.trim().split('\n').filter(line => line.trim());
-            
-            if (lines.length < 2) {
-                throw new Error('Dataset must have at least a header and one data row');
-            }
-            
-            const headers = lines[0]
-                .split(separator)
-                .map(h => h.trim().replace(/"/g, ''))
-                .filter(h => h.length > 0);
-            
-            const data = [];
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i]
-                    .split(separator)
-                    .map(v => v.trim().replace(/"/g, ''));
-                
-                if (values.length === headers.length) {
-                    const row = {};
-                    headers.forEach((header, index) => {
-                        const value = values[index];
-                        row[header] = isNaN(value) || value === '' ? value : parseFloat(value);
+                    showStatus(`🔄 Trying ${proxy.name}...`, 'loading');
+                    
+                    const response = await fetch(proxy.url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': '*/*'
+                        }
                     });
-                    data.push(row);
-                }
-            }
-            
-            return data;
-        }
-
-        function convertToClimateFormat(data, sourceName) {
-            if (data.length === 0) return [];
-            
-            const headers = Object.keys(data[0]);
-            
-            return data.map((row, index) => {
-                // Try to find year
-                let year = 1950 + index;
-                for (const header of headers) {
-                    if (row[header] && typeof row[header] === 'string') {
-                        const yearMatch = row[header].match(/(\d{4})/);
-                        if (yearMatch) {
-                            year = parseInt(yearMatch[1]);
-                            break;
+                    
+                    if (response.ok) {
+                        let rawData;
+                        const contentType = response.headers.get('content-type') || '';
+                        
+                        if (contentType.includes('application/json')) {
+                            const jsonData = await response.json();
+                            rawData = proxy.extract(jsonData);
+                        } else {
+                            rawData = await response.text();
+                            if (proxy.name === 'AllOrigins') {
+                                try {
+                                    const parsed = JSON.parse(rawData);
+                                    rawData = proxy.extract(parsed);
+                                } catch (e) {
+                                    // Not JSON, use as is
+                                }
+                            }
+                        }
+                        
+                        if (rawData && rawData.trim()) {
+                            loadedData = rawData;
+                            displayData(rawData, proxy.name);
+                            
+                            const loadTime = Date.now() - loadStartTime;
+                            showStatus(`✅ Dataset loaded successfully via ${proxy.name}! (${loadTime}ms)`, 'success');
+                            
+                            document.getElementById('downloadBtn').disabled = false;
+                            document.getElementById('downloadSection').style.display = 'block';
+                            return;
                         }
                     }
+                    
+                } catch (error) {
+                    console.log(`${proxy.name} failed:`, error.message);
+                    continue;
                 }
+            }
+            
+            // If all proxies fail, try direct access as last resort
+            try {
+                showStatus('🔄 Trying direct access...', 'loading');
+                const response = await fetch(rohubUrl, { mode: 'cors' });
                 
-                // Find temperature
-                let temperature = 14;
-                const tempColumns = headers.filter(h => 
-                    typeof row[h] === 'number' && 
-                    (h.toLowerCase().includes('temp') || 
-                     h.toLowerCase().includes('avg') ||
-                     h.toLowerCase().includes('anomal'))
-                );
-                
-                if (tempColumns.length > 0) {
-                    temperature = row[tempColumns[0]];
+                if (response.ok) {
+                    const data = await response.text();
+                    loadedData = data;
+                    displayData(data, 'Direct');
+                    
+                    const loadTime = Date.now() - loadStartTime;
+                    showStatus(`✅ Dataset loaded directly! (${loadTime}ms)`, 'success');
+                    
+                    document.getElementById('downloadBtn').disabled = false;
+                    document.getElementById('downloadSection').style.display = 'block';
+                    return;
                 }
-                
-                const climateRow = {
-                    year: year,
-                    temperature: temperature,
-                    anomaly: temperature - 14,
-                    source: sourceName || 'ROHub Dataset'
-                };
-                
-                // Add all original columns
-                headers.forEach(header => {
-                    climateRow[header] = row[header];
-                });
-                
-                return climateRow;
+            } catch (error) {
+                console.log('Direct access failed:', error.message);
+            }
+            
+            showStatus('❌ Unable to load dataset. The resource may be private or temporarily unavailable.', 'error');
+        }
+        
+        function displayData(data, source) {
+            const viewer = document.getElementById('dataViewer');
+            const display = document.getElementById('dataDisplay');
+            const title = document.getElementById('dataTitle');
+            const sizeElement = document.getElementById('dataSize');
+            
+            // Determine data type
+            currentDataType = detectDataType(data);
+            
+            // Update stats
+            document.getElementById('sizeBytes').textContent = formatBytes(data.length);
+            document.getElementById('dataType').textContent = currentDataType;
+            document.getElementById('loadTime').textContent = `${Date.now() - loadStartTime}ms`;
+            
+            title.textContent = `📊 Dataset Content (${currentDataType}) - via ${source}`;
+            sizeElement.textContent = formatBytes(data.length);
+            
+            // Format and display data
+            if (currentDataType === 'JSON') {
+                display.innerHTML = `<div class="json-viewer">${formatJSON(data)}</div>`;
+            } else if (currentDataType === 'CSV') {
+                display.innerHTML = formatCSV(data);
+            } else if (currentDataType === 'XML') {
+                display.innerHTML = `<pre>${escapeHtml(data)}</pre>`;
+            } else {
+                // Plain text or unknown format
+                const truncated = data.length > 10000 ? data.substring(0, 10000) + '\n\n... (truncated, use download to get full data)' : data;
+                display.innerHTML = `<pre>${escapeHtml(truncated)}</pre>`;
+            }
+            
+            viewer.style.display = 'block';
+        }
+        
+        function detectDataType(data) {
+            const trimmed = data.trim();
+            
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                try {
+                    JSON.parse(trimmed);
+                    return 'JSON';
+                } catch (e) {
+                    return 'Text';
+                }
+            } else if (trimmed.startsWith('<?xml') || trimmed.startsWith('<')) {
+                return 'XML';
+            } else if (trimmed.includes(',') && trimmed.includes('\n')) {
+                // Simple CSV detection
+                const lines = trimmed.split('\n');
+                if (lines.length > 1 && lines[0].includes(',')) {
+                    return 'CSV';
+                }
+            }
+            
+            return 'Text';
+        }
+        
+        function formatJSON(jsonString) {
+            try {
+                const parsed = JSON.parse(jsonString);
+                return syntaxHighlightJSON(JSON.stringify(parsed, null, 2));
+            } catch (e) {
+                return `<pre>${escapeHtml(jsonString)}</pre>`;
+            }
+        }
+        
+        function syntaxHighlightJSON(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
             });
         }
-
-        function showDataPreview(data) {
-            // Implementation similar to previous version
-            const previewEl = document.getElementById('preview');
-            const columns = Object.keys(data[0]).filter(key => key !== 'source');
+        
+        function formatCSV(csvData) {
+            const lines = csvData.trim().split('\n');
+            if (lines.length < 2) return `<pre>${escapeHtml(csvData)}</pre>`;
             
-            let html = `<div class="status"><strong>📊 Data Preview</strong><br>`;
-            html += `Loaded ${data.length} records with columns: ${columns.join(', ')}</div>`;
+            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 12px;">';
             
-            previewEl.innerHTML = html;
-            previewEl.style.display = 'block';
+            lines.slice(0, Math.min(50, lines.length)).forEach((line, index) => {
+                const cells = line.split(',').map(cell => cell.trim().replace(/^"(.*)"$/, '$1'));
+                const tag = index === 0 ? 'th' : 'td';
+                const style = index === 0 ? 'background: #f8f9fa; font-weight: bold;' : '';
+                
+                html += '<tr>';
+                cells.forEach(cell => {
+                    html += `<${tag} style="border: 1px solid #ddd; padding: 8px; ${style}">${escapeHtml(cell)}</${tag}>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            
+            if (lines.length > 50) {
+                html += '<p><em>Showing first 50 rows. Download to see all data.</em></p>';
+            }
+            
+            return html;
         }
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function downloadData() {
+            if (!loadedData) {
+                showStatus('❌ No data to download', 'error');
+                return;
+            }
+            
+            const format = document.getElementById('downloadFormat').value;
+            let dataToDownload = loadedData;
+            let filename = 'rohub-dataset';
+            let mimeType = 'text/plain';
+            
+            switch (format) {
+                case 'json':
+                    if (currentDataType === 'JSON') {
+                        try {
+                            dataToDownload = JSON.stringify(JSON.parse(loadedData), null, 2);
+                            filename += '.json';
+                            mimeType = 'application/json';
+                        } catch (e) {
+                            dataToDownload = loadedData;
+                            filename += '.txt';
+                        }
+                    } else {
+                        filename += '.txt';
+                    }
+                    break;
+                case 'csv':
+                    filename += '.csv';
+                    mimeType = 'text/csv';
+                    break;
+                case 'txt':
+                    filename += '.txt';
+                    break;
+                default:
+                    // Detect original format
+                    if (currentDataType === 'JSON') {
+                        filename += '.json';
+                        mimeType = 'application/json';
+                    } else if (currentDataType === 'CSV') {
+                        filename += '.csv';
+                        mimeType = 'text/csv';
+                    } else if (currentDataType === 'XML') {
+                        filename += '.xml';
+                        mimeType = 'application/xml';
+                    } else {
+                        filename += '.txt';
+                    }
+            }
+            
+            const blob = new Blob([dataToDownload], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showStatus(`✅ Downloaded as ${filename}`, 'success');
+        }
+        
+        function clearData() {
+            loadedData = null;
+            currentDataType = 'unknown';
+            document.getElementById('dataViewer').style.display = 'none';
+            document.getElementById('downloadSection').style.display = 'none';
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('status').textContent = '';
+            document.getElementById('status').className = '';
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            
+            if (type === 'loading') {
+                statusDiv.innerHTML = `<div class="spinner"></div> ${message}`;
+            } else {
+                statusDiv.textContent = message;
+            }
+            
+            statusDiv.className = `status ${type}`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    if (statusDiv.className.includes('success')) {
+                        statusDiv.textContent = '';
+                        statusDiv.className = '';
+                    }
+                }, 5000);
+            }
+        }
+        
+        // Auto-load on page load
+        window.onload = function() {
+            loadDataset();
+        };
     </script>
 </body>
 </html>
