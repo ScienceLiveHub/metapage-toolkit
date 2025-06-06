@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ROHub Dataset Viewer</title>
+    <title>ROHub Dataset Loader</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #173968 0%, #be2e78 100%);
             min-height: 100vh;
         }
         
@@ -25,8 +25,7 @@
             color: #333;
             text-align: center;
             margin-bottom: 30px;
-            font-size: 2.5em;
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #173968, #be2e78);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -49,10 +48,9 @@
             margin-bottom: 8px;
             font-weight: 600;
             color: #495057;
-            font-size: 1.1em;
         }
         
-        input, textarea {
+        input, textarea, select {
             width: 100%;
             padding: 15px;
             border: 2px solid #ddd;
@@ -60,24 +58,16 @@
             font-size: 16px;
             transition: all 0.3s ease;
             box-sizing: border-box;
-            font-family: 'Courier New', monospace;
         }
         
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin: 20px 0;
-            flex-wrap: wrap;
+            border-color: #173968;
+            box-shadow: 0 0 0 3px rgba(23, 57, 104, 0.1);
         }
         
         button {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #173968, #be2e78);
             color: white;
             border: none;
             padding: 15px 25px;
@@ -86,19 +76,18 @@
             font-size: 16px;
             font-weight: 600;
             transition: all 0.3s ease;
-            min-width: 140px;
+            margin: 5px;
         }
         
         button:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 8px 20px rgba(23, 57, 104, 0.3);
         }
         
         button:disabled {
             background: #6c757d;
             cursor: not-allowed;
             transform: none;
-            box-shadow: none;
         }
         
         .status {
@@ -106,9 +95,6 @@
             padding: 15px 20px;
             border-radius: 8px;
             font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
         
         .status.loading {
@@ -129,37 +115,30 @@
             border: 2px solid #f44336;
         }
         
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #1976d2;
-            border-top: 2px solid transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .resource-selector {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            margin: 20px 0;
+            padding: 20px;
+            display: none;
         }
         
         .data-viewer {
             background: #f8f9fa;
             border: 2px solid #e9ecef;
             border-radius: 12px;
-            margin-top: 25px;
+            margin: 20px 0;
             overflow: hidden;
+            display: none;
         }
         
         .data-header {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #be2e78, #173968);
             color: white;
             padding: 20px;
             font-weight: 600;
             font-size: 1.2em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
         
         .data-content {
@@ -170,339 +149,366 @@
         }
         
         .data-content pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.6;
             background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
             border: 1px solid #e9ecef;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
         }
         
         .json-viewer {
             font-family: 'Courier New', monospace;
         }
         
-        .json-key {
-            color: #0066cc;
-            font-weight: bold;
+        .json-key { color: #173968; font-weight: bold; }
+        .json-string { color: #be2e78; }
+        .json-number { color: #cc6600; }
+        .json-boolean { color: #cc0066; font-weight: bold; }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #1976d2;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
         }
         
-        .json-string {
-            color: #009900;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
-        .json-number {
-            color: #cc6600;
-        }
-        
-        .json-boolean {
-            color: #cc0066;
-            font-weight: bold;
-        }
-        
-        .data-stats {
-            background: #e3f2fd;
-            padding: 15px 20px;
-            border-top: 1px solid #e9ecef;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 15px;
+        .url-type {
             font-size: 14px;
-            color: #1565c0;
-        }
-        
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .stat-value {
-            font-weight: bold;
-            font-size: 1.2em;
-        }
-        
-        .download-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
-            text-align: center;
-        }
-        
-        .download-btn {
-            background: #28a745;
-            margin: 0 10px;
-        }
-        
-        .download-btn:hover {
-            background: #218838;
-        }
-        
-        .format-selector {
-            margin: 15px 0;
-        }
-        
-        .format-selector select {
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        
-        .proxy-status {
-            font-size: 12px;
             color: #6c757d;
-            margin-top: 10px;
-            font-style: italic;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔬 ROHub Dataset Viewer</h1>
+        <h1>🔬 ROHub Dataset Loader</h1>
         
         <div class="input-section">
             <div class="input-group">
-                <label for="rohubUrl">🔗 ROHub Resource URL:</label>
-                <textarea id="rohubUrl" rows="3" placeholder="Paste your ROHub resource URL here...">https://w3id.org/ro-id/d5430aa5-7a8b-44fe-8d21-6a7c80ac36d4/resources/8d4cb501-4697-45ed-be43-65e001e07e8f</textarea>
+                <label for="rohubUrl">ROHub URL (Resource or Research Object):</label>
+                <textarea id="rohubUrl" rows="3" placeholder="Paste your ROHub URL here...">https://w3id.org/ro-id/d5430aa5-7a8b-44fe-8d21-6a7c80ac36d4/resources/8d4cb501-4697-45ed-be43-65e001e07e8f</textarea>
+                <div id="urlType" class="url-type"></div>
             </div>
             
-            <div class="button-group">
-                <button onclick="loadDataset()">📥 Load Dataset</button>
-                <button onclick="clearData()">🗑️ Clear</button>
-                <button id="downloadBtn" onclick="downloadData()" disabled>💾 Download</button>
-            </div>
-            
-            <div class="proxy-status">
-                Using CORS proxy to bypass browser restrictions
+            <div>
+                <button onclick="analyzeAndLoad()">🔍 Load from ROHub</button>
+                <button onclick="clearAll()">🗑️ Clear</button>
             </div>
         </div>
         
         <div id="status"></div>
         
-        <div id="dataViewer" class="data-viewer" style="display: none;">
-            <div class="data-header">
-                <span id="dataTitle">📊 Dataset Content</span>
-                <span id="dataSize"></span>
-            </div>
-            <div class="data-content">
-                <div id="dataDisplay"></div>
-            </div>
-            <div class="data-stats">
-                <div class="stat-item">
-                    <div class="stat-value" id="sizeBytes">-</div>
-                    <div>Size (bytes)</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="dataType">-</div>
-                    <div>Data Type</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="loadTime">-</div>
-                    <div>Load Time</div>
-                </div>
-            </div>
-        </div>
-        
-        <div id="downloadSection" class="download-section" style="display: none;">
-            <h3>💾 Download Options</h3>
-            <div class="format-selector">
-                <label>Format: </label>
-                <select id="downloadFormat">
-                    <option value="original">Original Format</option>
-                    <option value="json">JSON (if applicable)</option>
-                    <option value="txt">Text File</option>
-                    <option value="csv">CSV (if tabular)</option>
+        <div id="resourceSelector" class="resource-selector">
+            <h3>📁 Select a Resource</h3>
+            <div class="input-group">
+                <label for="resourceSelect">Available resources:</label>
+                <select id="resourceSelect">
+                    <option value="">-- Loading resources --</option>
                 </select>
             </div>
-            <button class="download-btn" onclick="downloadData()">⬬ Download File</button>
+            <button onclick="loadSelectedResource()">📥 Load Selected Resource</button>
+        </div>
+        
+        <div id="dataViewer" class="data-viewer">
+            <div class="data-header" id="dataHeader">
+                📄 Dataset Content
+            </div>
+            <div class="data-content" id="dataContent">
+            </div>
         </div>
     </div>
 
     <script>
-        let loadedData = null;
-        let loadStartTime = 0;
-        let currentDataType = 'unknown';
+        let metaframe;
+        let currentData = null;
+        let currentRO = null;
         
-        async function loadDataset() {
-            const rohubUrl = document.getElementById('rohubUrl').value.trim();
+        // Initialize metaframe
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof Metaframe !== 'undefined') {
+                metaframe = new Metaframe();
+                console.log('Metaframe initialized');
+            }
             
-            if (!rohubUrl) {
+            // Auto-detect URL type on input
+            document.getElementById('rohubUrl').addEventListener('input', detectUrlType);
+            detectUrlType();
+        });
+        
+        function detectUrlType() {
+            const url = document.getElementById('rohubUrl').value.trim();
+            const typeDiv = document.getElementById('urlType');
+            
+            if (!url) {
+                typeDiv.textContent = '';
+                return;
+            }
+            
+            if (url.includes('/resources/')) {
+                typeDiv.textContent = '🔗 Individual Resource URL - will load directly';
+                typeDiv.style.color = '#28a745';
+            } else if (url.match(/\/ro-id\/[a-f0-9-]+\/?$/)) {
+                typeDiv.textContent = '📁 Research Object URL - will show resource selector';
+                typeDiv.style.color = '#007bff';
+            } else {
+                typeDiv.textContent = '❓ URL format not recognized';
+                typeDiv.style.color = '#dc3545';
+            }
+        }
+        
+        async function analyzeAndLoad() {
+            const url = document.getElementById('rohubUrl').value.trim();
+            
+            if (!url) {
                 showStatus('❌ Please enter a ROHub URL', 'error');
                 return;
             }
             
-            // Validate URL format
-            const urlPattern = /https:\/\/w3id\.org\/ro-id\/([a-f0-9-]+)\/resources\/([a-f0-9-]+)/;
-            if (!urlPattern.test(rohubUrl)) {
-                showStatus('❌ Invalid ROHub URL format', 'error');
+            // Determine if it's a resource or research object URL
+            if (url.includes('/resources/')) {
+                // Direct resource URL
+                await loadResourceDirectly(url);
+            } else {
+                // Research object URL
+                await loadResearchObjectAndShowSelector(url);
+            }
+        }
+        
+        async function loadResourceDirectly(resourceUrl) {
+            showStatus('🔄 Loading resource directly...', 'loading');
+            
+            try {
+                const content = await fetchResourceContent(resourceUrl);
+                const resourceName = extractResourceName(resourceUrl);
+                
+                currentData = content;
+                displayData(content, resourceName, 'Direct resource');
+                outputToMetapage(content, resourceName, resourceUrl);
+                
+                showStatus('✅ Resource loaded successfully!', 'success');
+                
+            } catch (error) {
+                showStatus(`❌ Error loading resource: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadResearchObjectAndShowSelector(roUrl) {
+            showStatus('🔄 Loading research object...', 'loading');
+            
+            try {
+                // Extract RO ID from URL
+                const roIdMatch = roUrl.match(/\/ro-id\/([a-f0-9-]+)/);
+                if (!roIdMatch) {
+                    throw new Error('Invalid Research Object URL format');
+                }
+                
+                const roId = roIdMatch[1];
+                
+                // Load RO metadata
+                const roApiUrl = `https://api.rohub.org/api/ros/${roId}/`;
+                const roData = await fetchWithProxy(roApiUrl);
+                currentRO = roData;
+                
+                // Load resources
+                const resourcesApiUrl = `https://api.rohub.org/api/ros/${roId}/resources/`;
+                const resourcesResponse = await fetchWithProxy(resourcesApiUrl);
+                const resources = resourcesResponse.results || resourcesResponse;
+                
+                // Show resource selector
+                populateResourceSelector(resources, roId);
+                showStatus('✅ Research object loaded! Select a resource below.', 'success');
+                
+            } catch (error) {
+                showStatus(`❌ Error loading research object: ${error.message}`, 'error');
+            }
+        }
+        
+        function populateResourceSelector(resources, roId) {
+            const selector = document.getElementById('resourceSelector');
+            const select = document.getElementById('resourceSelect');
+            
+            select.innerHTML = '<option value="">-- Select a resource --</option>';
+            
+            resources.forEach((resource, index) => {
+                const resourceName = resource.name || resource.title || resource.identifier || `Resource ${index + 1}`;
+                const resourceType = resource.mimetype || resource.res_type || resource.type || 'Unknown';
+                const resourceId = resource.identifier || resource.res_id || resource.id;
+                
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${resourceName} (${resourceType})`;
+                
+                // Store resource info in data attributes
+                option.dataset.resourceId = resourceId;
+                option.dataset.name = resourceName;
+                option.dataset.type = resourceType;
+                option.dataset.roId = roId;
+                
+                select.appendChild(option);
+            });
+            
+            selector.style.display = 'block';
+        }
+        
+        async function loadSelectedResource() {
+            const select = document.getElementById('resourceSelect');
+            
+            if (select.value === '') {
+                showStatus('❌ Please select a resource', 'error');
                 return;
             }
             
-            loadStartTime = Date.now();
-            showStatus('🔄 Loading dataset...', 'loading');
+            const option = select.options[select.selectedIndex];
+            const resourceId = option.dataset.resourceId;
+            const resourceName = option.dataset.name;
+            const roId = option.dataset.roId;
             
-            // Try multiple CORS proxy services
-            const proxies = [
-                {
-                    name: 'AllOrigins',
-                    url: `https://api.allorigins.win/get?url=${encodeURIComponent(rohubUrl)}`,
-                    extract: (data) => data.contents
+            showStatus('🔄 Loading selected resource...', 'loading');
+            
+            try {
+                // Construct resource URL
+                const resourceUrl = `https://w3id.org/ro-id/${roId}/resources/${resourceId}`;
+                
+                const content = await fetchResourceContent(resourceUrl);
+                
+                currentData = content;
+                displayData(content, resourceName, 'Selected from RO');
+                outputToMetapage(content, resourceName, resourceUrl);
+                
+                showStatus('✅ Resource loaded successfully!', 'success');
+                
+            } catch (error) {
+                showStatus(`❌ Error loading resource: ${error.message}`, 'error');
+            }
+        }
+        
+        async function fetchResourceContent(url) {
+            const methods = [
+                // Direct fetch with different Accept headers
+                async () => {
+                    const response = await fetch(url, { 
+                        mode: 'cors',
+                        headers: { 'Accept': '*/*' }
+                    });
+                    if (response.ok) return await response.text();
+                    throw new Error(`HTTP ${response.status}`);
                 },
-                {
-                    name: 'CORS Proxy',
-                    url: `https://corsproxy.io/?${encodeURIComponent(rohubUrl)}`,
-                    extract: (data) => data
+                
+                // AllOrigins proxy
+                async () => {
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.contents;
+                    }
+                    throw new Error('Proxy failed');
                 },
-                {
-                    name: 'ThingProxy',
-                    url: `https://thingproxy.freeboard.io/fetch/${rohubUrl}`,
-                    extract: (data) => data
+                
+                // CORS proxy
+                async () => {
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) return await response.text();
+                    throw new Error('CORS proxy failed');
                 }
             ];
             
-            for (let proxy of proxies) {
+            for (const method of methods) {
                 try {
-                    showStatus(`🔄 Trying ${proxy.name}...`, 'loading');
-                    
-                    const response = await fetch(proxy.url, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': '*/*'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        let rawData;
-                        const contentType = response.headers.get('content-type') || '';
-                        
-                        if (contentType.includes('application/json')) {
-                            const jsonData = await response.json();
-                            rawData = proxy.extract(jsonData);
-                        } else {
-                            rawData = await response.text();
-                            if (proxy.name === 'AllOrigins') {
-                                try {
-                                    const parsed = JSON.parse(rawData);
-                                    rawData = proxy.extract(parsed);
-                                } catch (e) {
-                                    // Not JSON, use as is
-                                }
-                            }
-                        }
-                        
-                        if (rawData && rawData.trim()) {
-                            loadedData = rawData;
-                            displayData(rawData, proxy.name);
-                            
-                            const loadTime = Date.now() - loadStartTime;
-                            showStatus(`✅ Dataset loaded successfully via ${proxy.name}! (${loadTime}ms)`, 'success');
-                            
-                            document.getElementById('downloadBtn').disabled = false;
-                            document.getElementById('downloadSection').style.display = 'block';
-                            return;
-                        }
-                    }
-                    
+                    return await method();
                 } catch (error) {
-                    console.log(`${proxy.name} failed:`, error.message);
-                    continue;
+                    console.log('Method failed:', error.message);
                 }
             }
             
-            // If all proxies fail, try direct access as last resort
-            try {
-                showStatus('🔄 Trying direct access...', 'loading');
-                const response = await fetch(rohubUrl, { mode: 'cors' });
-                
-                if (response.ok) {
-                    const data = await response.text();
-                    loadedData = data;
-                    displayData(data, 'Direct');
-                    
-                    const loadTime = Date.now() - loadStartTime;
-                    showStatus(`✅ Dataset loaded directly! (${loadTime}ms)`, 'success');
-                    
-                    document.getElementById('downloadBtn').disabled = false;
-                    document.getElementById('downloadSection').style.display = 'block';
-                    return;
-                }
-            } catch (error) {
-                console.log('Direct access failed:', error.message);
-            }
-            
-            showStatus('❌ Unable to load dataset. The resource may be private or temporarily unavailable.', 'error');
+            throw new Error('All access methods failed');
         }
         
-        function displayData(data, source) {
+        async function fetchWithProxy(url) {
+            try {
+                const response = await fetch(url, { 
+                    mode: 'cors',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (response.ok) return await response.json();
+                throw new Error(`HTTP ${response.status}`);
+            } catch (error) {
+                // Fallback to proxy
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                const proxyResponse = await fetch(proxyUrl);
+                if (proxyResponse.ok) {
+                    const proxyData = await proxyResponse.json();
+                    return JSON.parse(proxyData.contents);
+                }
+                throw error;
+            }
+        }
+        
+        function extractResourceName(url) {
+            const parts = url.split('/');
+            return parts[parts.length - 1] || 'Resource';
+        }
+        
+        function displayData(content, name, source) {
             const viewer = document.getElementById('dataViewer');
-            const display = document.getElementById('dataDisplay');
-            const title = document.getElementById('dataTitle');
-            const sizeElement = document.getElementById('dataSize');
+            const header = document.getElementById('dataHeader');
+            const contentDiv = document.getElementById('dataContent');
             
-            // Determine data type
-            currentDataType = detectDataType(data);
+            header.textContent = `📄 ${name} (${source})`;
             
-            // Update stats
-            document.getElementById('sizeBytes').textContent = formatBytes(data.length);
-            document.getElementById('dataType').textContent = currentDataType;
-            document.getElementById('loadTime').textContent = `${Date.now() - loadStartTime}ms`;
+            let formattedContent;
             
-            title.textContent = `📊 Dataset Content (${currentDataType}) - via ${source}`;
-            sizeElement.textContent = formatBytes(data.length);
-            
-            // Format and display data
-            if (currentDataType === 'JSON') {
-                display.innerHTML = `<div class="json-viewer">${formatJSON(data)}</div>`;
-            } else if (currentDataType === 'CSV') {
-                display.innerHTML = formatCSV(data);
-            } else if (currentDataType === 'XML') {
-                display.innerHTML = `<pre>${escapeHtml(data)}</pre>`;
-            } else {
-                // Plain text or unknown format
-                const truncated = data.length > 10000 ? data.substring(0, 10000) + '\n\n... (truncated, use download to get full data)' : data;
-                display.innerHTML = `<pre>${escapeHtml(truncated)}</pre>`;
+            // Try to format as JSON
+            try {
+                const parsed = JSON.parse(content);
+                formattedContent = `<div class="json-viewer">${syntaxHighlightJSON(JSON.stringify(parsed, null, 2))}</div>`;
+            } catch (e) {
+                // Check if it's CSV
+                if (content.includes(',') && content.includes('\n')) {
+                    formattedContent = formatAsTable(content);
+                } else {
+                    // Plain text
+                    formattedContent = `<pre>${escapeHtml(content)}</pre>`;
+                }
             }
             
+            contentDiv.innerHTML = formattedContent;
             viewer.style.display = 'block';
         }
         
-        function detectDataType(data) {
-            const trimmed = data.trim();
+        function formatAsTable(csvContent) {
+            const lines = csvContent.trim().split('\n').slice(0, 50); // Show first 50 rows
+            if (lines.length < 2) return `<pre>${escapeHtml(csvContent)}</pre>`;
             
-            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-                try {
-                    JSON.parse(trimmed);
-                    return 'JSON';
-                } catch (e) {
-                    return 'Text';
-                }
-            } else if (trimmed.startsWith('<?xml') || trimmed.startsWith('<')) {
-                return 'XML';
-            } else if (trimmed.includes(',') && trimmed.includes('\n')) {
-                // Simple CSV detection
-                const lines = trimmed.split('\n');
-                if (lines.length > 1 && lines[0].includes(',')) {
-                    return 'CSV';
-                }
-            }
+            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 14px;">';
             
-            return 'Text';
-        }
-        
-        function formatJSON(jsonString) {
-            try {
-                const parsed = JSON.parse(jsonString);
-                return syntaxHighlightJSON(JSON.stringify(parsed, null, 2));
-            } catch (e) {
-                return `<pre>${escapeHtml(jsonString)}</pre>`;
-            }
+            lines.forEach((line, index) => {
+                const cells = line.split(',').map(cell => cell.trim().replace(/^"(.*)"$/, '$1'));
+                const tag = index === 0 ? 'th' : 'td';
+                const style = index === 0 ? 'background: #f8f9fa; font-weight: bold;' : '';
+                
+                html += '<tr>';
+                cells.forEach(cell => {
+                    html += `<${tag} style="border: 1px solid #ddd; padding: 8px; ${style}">${escapeHtml(cell)}</${tag}>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            return html;
         }
         
         function syntaxHighlightJSON(json) {
@@ -517,46 +523,9 @@
                     }
                 } else if (/true|false/.test(match)) {
                     cls = 'json-boolean';
-                } else if (/null/.test(match)) {
-                    cls = 'json-null';
                 }
                 return '<span class="' + cls + '">' + match + '</span>';
             });
-        }
-        
-        function formatCSV(csvData) {
-            const lines = csvData.trim().split('\n');
-            if (lines.length < 2) return `<pre>${escapeHtml(csvData)}</pre>`;
-            
-            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 12px;">';
-            
-            lines.slice(0, Math.min(50, lines.length)).forEach((line, index) => {
-                const cells = line.split(',').map(cell => cell.trim().replace(/^"(.*)"$/, '$1'));
-                const tag = index === 0 ? 'th' : 'td';
-                const style = index === 0 ? 'background: #f8f9fa; font-weight: bold;' : '';
-                
-                html += '<tr>';
-                cells.forEach(cell => {
-                    html += `<${tag} style="border: 1px solid #ddd; padding: 8px; ${style}">${escapeHtml(cell)}</${tag}>`;
-                });
-                html += '</tr>';
-            });
-            
-            html += '</table>';
-            
-            if (lines.length > 50) {
-                html += '<p><em>Showing first 50 rows. Download to see all data.</em></p>';
-            }
-            
-            return html;
-        }
-        
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
         function escapeHtml(text) {
@@ -565,104 +534,87 @@
             return div.innerHTML;
         }
         
-        function downloadData() {
-            if (!loadedData) {
-                showStatus('❌ No data to download', 'error');
-                return;
+        function outputToMetapage(content, name, url) {
+            if (!metaframe) return;
+            
+            let parsedData = content;
+            let dataType = 'text';
+            
+            // Try to parse as JSON
+            try {
+                parsedData = JSON.parse(content);
+                dataType = 'json';
+            } catch (e) {
+                // Try to parse as CSV
+                if (content.includes(',') && content.includes('\n')) {
+                    const lines = content.trim().split('\n');
+                    if (lines.length > 1) {
+                        const headers = lines[0].split(',').map(h => h.trim().replace(/^"(.*)"$/, '$1'));
+                        const data = lines.slice(1).map(line => {
+                            const values = line.split(',').map(v => v.trim().replace(/^"(.*)"$/, '$1'));
+                            const row = {};
+                            headers.forEach((header, index) => {
+                                row[header] = values[index];
+                            });
+                            return row;
+                        });
+                        parsedData = { headers, data };
+                        dataType = 'csv';
+                    }
+                }
             }
             
-            const format = document.getElementById('downloadFormat').value;
-            let dataToDownload = loadedData;
-            let filename = 'rohub-dataset';
-            let mimeType = 'text/plain';
+            // Output to metapage
+            metaframe.setOutput('resourceName', name);
+            metaframe.setOutput('resourceUrl', url);
+            metaframe.setOutput('dataType', dataType);
+            metaframe.setOutput('rawContent', content);
+            metaframe.setOutput('parsedData', parsedData);
             
-            switch (format) {
-                case 'json':
-                    if (currentDataType === 'JSON') {
-                        try {
-                            dataToDownload = JSON.stringify(JSON.parse(loadedData), null, 2);
-                            filename += '.json';
-                            mimeType = 'application/json';
-                        } catch (e) {
-                            dataToDownload = loadedData;
-                            filename += '.txt';
-                        }
-                    } else {
-                        filename += '.txt';
-                    }
-                    break;
-                case 'csv':
-                    filename += '.csv';
-                    mimeType = 'text/csv';
-                    break;
-                case 'txt':
-                    filename += '.txt';
-                    break;
-                default:
-                    // Detect original format
-                    if (currentDataType === 'JSON') {
-                        filename += '.json';
-                        mimeType = 'application/json';
-                    } else if (currentDataType === 'CSV') {
-                        filename += '.csv';
-                        mimeType = 'text/csv';
-                    } else if (currentDataType === 'XML') {
-                        filename += '.xml';
-                        mimeType = 'application/xml';
-                    } else {
-                        filename += '.txt';
-                    }
-            }
-            
-            const blob = new Blob([dataToDownload], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showStatus(`✅ Downloaded as ${filename}`, 'success');
+            console.log('Data output to metapage:', dataType, parsedData);
         }
         
-        function clearData() {
-            loadedData = null;
-            currentDataType = 'unknown';
+        function clearAll() {
+            document.getElementById('resourceSelector').style.display = 'none';
             document.getElementById('dataViewer').style.display = 'none';
-            document.getElementById('downloadSection').style.display = 'none';
-            document.getElementById('downloadBtn').disabled = true;
-            document.getElementById('status').textContent = '';
-            document.getElementById('status').className = '';
+            document.getElementById('status').innerHTML = '';
+            
+            currentData = null;
+            currentRO = null;
+            
+            if (metaframe) {
+                metaframe.setOutput('resourceName', null);
+                metaframe.setOutput('resourceUrl', null);
+                metaframe.setOutput('dataType', null);
+                metaframe.setOutput('rawContent', null);
+                metaframe.setOutput('parsedData', null);
+            }
         }
         
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status');
             
             if (type === 'loading') {
-                statusDiv.innerHTML = `<div class="spinner"></div> ${message}`;
+                statusDiv.innerHTML = `<div class="status ${type}"><span class="spinner"></span>${message}</div>`;
             } else {
-                statusDiv.textContent = message;
+                statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
             }
-            
-            statusDiv.className = `status ${type}`;
             
             if (type === 'success') {
                 setTimeout(() => {
-                    if (statusDiv.className.includes('success')) {
-                        statusDiv.textContent = '';
-                        statusDiv.className = '';
-                    }
-                }, 5000);
+                    statusDiv.innerHTML = '';
+                }, 3000);
             }
         }
         
-        // Auto-load on page load
-        window.onload = function() {
-            loadDataset();
-        };
+        // Handle inputs from metapage
+        function onInputs(inputs) {
+            if (inputs.rohubUrl) {
+                document.getElementById('rohubUrl').value = inputs.rohubUrl;
+                detectUrlType();
+                analyzeAndLoad();
+            }
+        }
     </script>
 </body>
 </html>
