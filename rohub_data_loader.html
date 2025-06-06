@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROHub Dataset Loader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/4.3.2/iframeResizer.contentWindow.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -191,27 +192,21 @@
         }
 
         .metaframe-info {
-            background: rgba(255, 255, 255, 0.9);
-            border: 2px solid #173968;
+            background: #e8f4fd;
+            border: 2px solid #1976d2;
             border-radius: 8px;
             padding: 15px;
-            margin-bottom: 20px;
+            margin: 20px 0;
             font-size: 14px;
         }
 
-        .output-section {
-            background: #e8f5e8;
-            border: 2px solid #4caf50;
+        .send-data-section {
+            background: #f0f8ff;
+            border: 2px solid #007bff;
             border-radius: 12px;
             padding: 20px;
-            margin-top: 20px;
+            margin: 20px 0;
             display: none;
-        }
-
-        .output-header {
-            font-weight: 600;
-            color: #2e7d32;
-            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -220,9 +215,8 @@
         <h1>🔬 ROHub Dataset Loader</h1>
         
         <div class="metaframe-info">
-            📡 <strong>Metaframe Status:</strong> <span id="metaframeStatus">Initializing Safari-compatible mode...</span><br>
-            🔗 <strong>Connected:</strong> Ready to send data to downstream metaframes<br>
-            🔧 <strong>Version:</strong> Safari Compatible (PostMessage API)
+            <strong>📡 Metaframe Status:</strong> <span id="metaframeStatus">Initializing...</span><br>
+            <strong>🔗 Connected Tools:</strong> <span id="connectedTools">None</span>
         </div>
         
         <div class="input-section">
@@ -251,6 +245,13 @@
             <button onclick="loadSelectedResource()">📥 Load Selected Resource</button>
         </div>
         
+        <div id="sendDataSection" class="send-data-section">
+            <h3>📤 Send Data to Connected Tools</h3>
+            <p>Data loaded successfully! You can now send this data to connected visualization tools.</p>
+            <button onclick="sendDataToMetaframe()">🚀 Send to Warming Stripes Visualizer</button>
+            <button onclick="sendRawDataToMetaframe()">📋 Send Raw CSV Data</button>
+        </div>
+        
         <div id="dataViewer" class="data-viewer">
             <div class="data-header" id="dataHeader">
                 📄 Dataset Content
@@ -258,151 +259,63 @@
             <div class="data-content" id="dataContent">
             </div>
         </div>
-
-        <div id="outputSection" class="output-section">
-            <div class="output-header">📤 Data Output (sent to connected metaframes)</div>
-            <div id="outputSummary"></div>
-        </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@metaframe/core@latest/dist/index.js"></script>
     <script>
-        // Safari-Compatible Metaframe Implementation using PostMessage API
-        class SafariMetaframe {
-            constructor() {
-                this.inputs = {};
-                this.outputs = {};
-                this.inputCallbacks = [];
-                this.stateCallbacks = [];
-                
-                // Listen for messages from parent window (metapage)
-                window.addEventListener('message', (event) => {
-                    this.handleMessage(event);
-                });
-                
-                // Send ready signal to parent
-                this.sendToParent({
-                    type: 'metaframe_ready',
-                    source: 'metaframe',
-                    id: 'rohub-loader'
-                });
-                
-                console.log('Safari-compatible metaframe initialized');
-            }
-            
-            handleMessage(event) {
-                console.log('Received message:', event.data);
-                
-                if (event.data && event.data.type) {
-                    switch (event.data.type) {
-                        case 'metaframe_inputs':
-                            this.inputs = event.data.inputs || {};
-                            this.triggerInputCallbacks(this.inputs);
-                            break;
-                        case 'metaframe_state':
-                            this.triggerStateCallbacks(event.data.state);
-                            break;
-                        case 'setInputs':
-                            // Alternative input format
-                            this.inputs = event.data.inputs || {};
-                            this.triggerInputCallbacks(this.inputs);
-                            break;
-                    }
-                }
-            }
-            
-            onInputs(callback) {
-                this.inputCallbacks.push(callback);
-                console.log('Input callback registered');
-                // If we already have inputs, call the callback immediately
-                if (Object.keys(this.inputs).length > 0) {
-                    callback(this.inputs);
-                }
-            }
-            
-            onState(callback) {
-                this.stateCallbacks.push(callback);
-                console.log('State callback registered');
-            }
-            
-            setOutputs(outputs) {
-                this.outputs = outputs;
-                this.sendToParent({
-                    type: 'metaframe_outputs',
-                    outputs: outputs,
-                    source: 'metaframe',
-                    id: 'rohub-loader'
-                });
-                console.log('Outputs set:', outputs);
-            }
-            
-            sendToParent(message) {
-                if (window.parent !== window) {
-                    window.parent.postMessage(message, '*');
-                    console.log('Sent to parent:', message);
-                } else {
-                    console.log('No parent window - running standalone');
-                }
-            }
-            
-            triggerInputCallbacks(inputs) {
-                console.log(`Triggering ${this.inputCallbacks.length} input callbacks`);
-                this.inputCallbacks.forEach(callback => {
-                    try {
-                        callback(inputs);
-                    } catch (e) {
-                        console.error('Error in input callback:', e);
-                    }
-                });
-            }
-            
-            triggerStateCallbacks(state) {
-                console.log(`Triggering ${this.stateCallbacks.length} state callbacks`);
-                this.stateCallbacks.forEach(callback => {
-                    try {
-                        callback(state);
-                    } catch (e) {
-                        console.error('Error in state callback:', e);
-                    }
-                });
-            }
-        }
-
         let metaframe;
         let currentData = null;
         let currentRO = null;
+        let parsedCSVData = null;
         
-        // Initialize metaframe when page loads
-        function initializeApp() {
-            console.log('Initializing Safari-compatible ROHub loader...');
-            
-            // Initialize metaframe
-            metaframe = new SafariMetaframe();
-            
-            // Handle inputs from other metaframes (optional, in case we want to receive ROHub URLs)
-            metaframe.onInputs(function(inputs) {
-                console.log('Received inputs:', inputs);
-                if (inputs.rohubUrl) {
-                    document.getElementById('rohubUrl').value = inputs.rohubUrl;
-                    detectUrlType();
-                }
-            });
-            
-            // Set up state handlers
-            metaframe.onState(function(state) {
-                console.log('Metaframe state:', state);
-            });
-            
-            document.getElementById('metaframeStatus').textContent = 'Connected and ready (Safari compatible)';
-            console.log('Safari-compatible metaframe initialized successfully');
-        }
-        
+        // Initialize metaframe
         document.addEventListener('DOMContentLoaded', function() {
-            initializeApp();
+            console.log('🚀 Initializing ROHub Data Loader...');
+            
+            try {
+                if (typeof Metaframe !== 'undefined') {
+                    metaframe = new Metaframe();
+                    
+                    // Set up metaframe event handlers
+                    metaframe.onInputs((inputs) => {
+                        console.log('📥 Received inputs:', inputs);
+                        handleMetaframeInputs(inputs);
+                    });
+                    
+                    metaframe.onState((state) => {
+                        console.log('📊 State update:', state);
+                    });
+                    
+                    // Send ready signal
+                    metaframe.setOutputs({
+                        status: 'ready',
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    updateMetaframeStatus('✅ Connected and ready');
+                    console.log('✅ ROHub Data Loader metaframe initialized');
+                } else {
+                    updateMetaframeStatus('⚠️ Running in standalone mode');
+                    console.log('⚠️ Metaframe not available - running standalone');
+                }
+            } catch (error) {
+                console.error('❌ Metaframe initialization error:', error);
+                updateMetaframeStatus('❌ Connection failed');
+            }
             
             // Auto-detect URL type on input
             document.getElementById('rohubUrl').addEventListener('input', detectUrlType);
             detectUrlType();
         });
+        
+        function updateMetaframeStatus(status) {
+            document.getElementById('metaframeStatus').textContent = status;
+        }
+        
+        function handleMetaframeInputs(inputs) {
+            console.log('📥 Handling metaframe inputs:', inputs);
+            // Handle any inputs from other metaframes if needed
+        }
         
         function detectUrlType() {
             const url = document.getElementById('rohubUrl').value.trim();
@@ -452,9 +365,10 @@
                 
                 currentData = content;
                 displayData(content, resourceName, 'Direct resource');
-                outputToMetaframe(content, resourceName, resourceUrl);
+                parseAndStoreData(content, resourceName, resourceUrl);
                 
                 showStatus('✅ Resource loaded successfully!', 'success');
+                showSendDataSection();
                 
             } catch (error) {
                 showStatus(`❌ Error loading resource: ${error.message}`, 'error');
@@ -542,12 +456,149 @@
                 
                 currentData = content;
                 displayData(content, resourceName, 'Selected from RO');
-                outputToMetaframe(content, resourceName, resourceUrl);
+                parseAndStoreData(content, resourceName, resourceUrl);
                 
                 showStatus('✅ Resource loaded successfully!', 'success');
+                showSendDataSection();
                 
             } catch (error) {
                 showStatus(`❌ Error loading resource: ${error.message}`, 'error');
+            }
+        }
+        
+        function parseAndStoreData(content, name, url) {
+            console.log('🔄 Parsing data for metaframe output...');
+            
+            try {
+                // Try to parse as CSV
+                if (content.includes(',') && content.includes('\n')) {
+                    const lines = content.trim().split('\n');
+                    if (lines.length > 1) {
+                        const headers = lines[0].split(',').map(h => h.trim().replace(/^"(.*)"$/, '$1'));
+                        const data = lines.slice(1).map(line => {
+                            const values = line.split(',').map(v => v.trim().replace(/^"(.*)"$/, '$1'));
+                            const row = {};
+                            headers.forEach((header, index) => {
+                                const value = values[index];
+                                const numValue = parseFloat(value);
+                                row[header] = isNaN(numValue) ? value : numValue;
+                            });
+                            return row;
+                        });
+                        
+                        parsedCSVData = {
+                            type: 'csv',
+                            name: name,
+                            url: url,
+                            headers: headers,
+                            data: data,
+                            rawContent: content
+                        };
+                        
+                        console.log('✅ CSV data parsed successfully:', parsedCSVData);
+                        return;
+                    }
+                }
+                
+                // Try to parse as JSON
+                try {
+                    const jsonData = JSON.parse(content);
+                    parsedCSVData = {
+                        type: 'json',
+                        name: name,
+                        url: url,
+                        data: jsonData,
+                        rawContent: content
+                    };
+                    console.log('✅ JSON data parsed successfully:', parsedCSVData);
+                    return;
+                } catch (e) {
+                    // Not JSON
+                }
+                
+                // Plain text
+                parsedCSVData = {
+                    type: 'text',
+                    name: name,
+                    url: url,
+                    content: content,
+                    rawContent: content
+                };
+                
+                console.log('✅ Text data stored successfully:', parsedCSVData);
+                
+            } catch (error) {
+                console.error('❌ Error parsing data:', error);
+                parsedCSVData = null;
+            }
+        }
+        
+        function showSendDataSection() {
+            document.getElementById('sendDataSection').style.display = 'block';
+        }
+        
+        function sendDataToMetaframe() {
+            if (!metaframe) {
+                showStatus('❌ Metaframe not available', 'error');
+                return;
+            }
+            
+            if (!parsedCSVData) {
+                showStatus('❌ No parsed data available', 'error');
+                return;
+            }
+            
+            console.log('📤 Sending data to metaframe:', parsedCSVData);
+            
+            try {
+                // Send structured data for visualization
+                const outputData = {
+                    csvData: parsedCSVData.rawContent,
+                    parsedData: parsedCSVData.data || [],
+                    dataType: parsedCSVData.type,
+                    dataName: parsedCSVData.name,
+                    sourceUrl: parsedCSVData.url,
+                    timestamp: new Date().toISOString(),
+                    headers: parsedCSVData.headers || Object.keys(parsedCSVData.data?.[0] || {})
+                };
+                
+                metaframe.setOutputs(outputData);
+                
+                showStatus('✅ Data sent to connected visualization tools!', 'success');
+                console.log('✅ Data sent successfully via metaframe');
+                
+            } catch (error) {
+                console.error('❌ Error sending data:', error);
+                showStatus(`❌ Error sending data: ${error.message}`, 'error');
+            }
+        }
+        
+        function sendRawDataToMetaframe() {
+            if (!metaframe) {
+                showStatus('❌ Metaframe not available', 'error');
+                return;
+            }
+            
+            if (!currentData) {
+                showStatus('❌ No data available', 'error');
+                return;
+            }
+            
+            console.log('📤 Sending raw data to metaframe');
+            
+            try {
+                metaframe.setOutputs({
+                    rawData: currentData,
+                    dataType: 'raw',
+                    timestamp: new Date().toISOString()
+                });
+                
+                showStatus('✅ Raw data sent to connected tools!', 'success');
+                console.log('✅ Raw data sent successfully');
+                
+            } catch (error) {
+                console.error('❌ Error sending raw data:', error);
+                showStatus(`❌ Error sending raw data: ${error.message}`, 'error');
             }
         }
         
@@ -691,84 +742,15 @@
             return div.innerHTML;
         }
         
-        function outputToMetaframe(content, name, url) {
-            let parsedData = content;
-            let dataType = 'text';
-            
-            // Try to parse as JSON
-            try {
-                parsedData = JSON.parse(content);
-                dataType = 'json';
-            } catch (e) {
-                // Try to parse as CSV
-                if (content.includes(',') && content.includes('\n')) {
-                    const lines = content.trim().split('\n');
-                    if (lines.length > 1) {
-                        const headers = lines[0].split(',').map(h => h.trim().replace(/^"(.*)"$/, '$1'));
-                        const data = lines.slice(1).map(line => {
-                            const values = line.split(',').map(v => v.trim().replace(/^"(.*)"$/, '$1'));
-                            const row = {};
-                            headers.forEach((header, index) => {
-                                const value = values[index];
-                                const numValue = parseFloat(value);
-                                row[header] = isNaN(numValue) ? value : numValue;
-                            });
-                            return row;
-                        });
-                        parsedData = data;
-                        dataType = 'csv';
-                    }
-                }
-            }
-            
-            // Prepare outputs for metaframe
-            const outputs = {
-                csvData: content,  // Raw CSV content for warming stripes
-                data: parsedData,  // Parsed data
-                metadata: {
-                    name: name,
-                    url: url,
-                    type: dataType,
-                    timestamp: new Date().toISOString(),
-                    rows: Array.isArray(parsedData) ? parsedData.length : 1,
-                    source: 'ROHub'
-                }
-            };
-            
-            // Send outputs to connected metaframes
-            if (metaframe && metaframe.setOutputs) {
-                metaframe.setOutputs(outputs);
-                console.log('Data sent to metaframe outputs:', outputs);
-                
-                // Show output section
-                const outputSection = document.getElementById('outputSection');
-                const outputSummary = document.getElementById('outputSummary');
-                
-                outputSummary.innerHTML = `
-                    <strong>📊 Data sent:</strong> ${outputs.metadata.name}<br>
-                    <strong>📋 Type:</strong> ${outputs.metadata.type.toUpperCase()}<br>
-                    <strong>📈 Rows:</strong> ${outputs.metadata.rows}<br>
-                    <strong>🕒 Timestamp:</strong> ${new Date(outputs.metadata.timestamp).toLocaleString()}<br>
-                    <strong>🔗 Source URL:</strong> <a href="${outputs.metadata.url}" target="_blank">${outputs.metadata.url}</a>
-                `;
-                
-                outputSection.style.display = 'block';
-            }
-        }
-        
         function clearAll() {
             document.getElementById('resourceSelector').style.display = 'none';
             document.getElementById('dataViewer').style.display = 'none';
-            document.getElementById('outputSection').style.display = 'none';
+            document.getElementById('sendDataSection').style.display = 'none';
             document.getElementById('status').innerHTML = '';
             
             currentData = null;
             currentRO = null;
-            
-            // Clear metaframe outputs
-            if (metaframe && metaframe.setOutputs) {
-                metaframe.setOutputs({});
-            }
+            parsedCSVData = null;
         }
         
         function showStatus(message, type) {
@@ -786,7 +768,6 @@
                 }, 3000);
             }
         }
-        
     </script>
 </body>
 </html>

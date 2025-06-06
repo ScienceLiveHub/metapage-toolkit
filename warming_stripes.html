@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Warming Stripes Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/4.3.2/iframeResizer.contentWindow.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -37,23 +38,14 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-
+        
         .metaframe-info {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
             padding: 15px;
             margin-bottom: 20px;
             font-size: 14px;
-        }
-
-        .input-status {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
         }
         
         .data-input {
@@ -213,10 +205,16 @@
             border-radius: 5px;
             margin: 10px 0;
         }
-
-        .auto-detect {
-            background: rgba(40, 167, 69, 0.2);
-            border: 2px solid rgba(40, 167, 69, 0.4);
+        
+        .data-preview {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -226,22 +224,19 @@
             <h1>🌡️ Interactive Warming Stripes</h1>
             <p>Create beautiful climate visualizations from CSV data with customizable colormaps</p>
         </div>
-
+        
         <div class="metaframe-info">
-            📡 <strong>Metaframe Status:</strong> <span id="metaframeStatus">Initializing Safari-compatible mode...</span><br>
-            🔗 <strong>Input Source:</strong> <span id="inputSource">Waiting for data from ROHub Loader...</span><br>
-            🔧 <strong>Version:</strong> Safari Compatible (PostMessage API)
-        </div>
-
-        <div id="inputStatus" class="input-status">
-            <strong>📥 Input Status:</strong> <span id="inputStatusText">No data received yet. Connect this metaframe to the ROHub Dataset Loader.</span>
+            <strong>📡 Metaframe Status:</strong> <span id="metaframeStatus">Initializing...</span><br>
+            <strong>🔗 Input Source:</strong> <span id="inputSource">Waiting for data...</span><br>
+            <strong>🔧 Version:</strong> <span id="versionInfo">Metaframe Integration v2.0</span><br>
+            <strong>🆔 Frame Info:</strong> <span id="frameInfo">Loading...</span>
         </div>
         
         <div class="data-input">
             <h3>📊 Data Input</h3>
             <div class="control-group">
-                <label>CSV Data (from ROHub or manual input):</label>
-                <textarea id="csvData" rows="6" placeholder="Data will be automatically loaded from connected ROHub Dataset Loader, or paste your CSV data here...
+                <label>CSV Data (paste manually or receive from ROHub loader):</label>
+                <textarea id="csvData" rows="6" placeholder="Data will automatically appear here when received from the ROHub Dataset Loader, or you can paste your own CSV data...
 
 Example format:
 year,temperature,location
@@ -275,7 +270,7 @@ year,temperature,location
         <div id="datasetInfo" class="dataset-info" style="display: none;">
             <strong>📈 Parsed Data:</strong> <span id="datasetStats">None</span><br>
             <strong>📋 Available Columns:</strong> <span id="availableColumns">None</span><br>
-            <strong>🔗 Data Source:</strong> <span id="dataSource">Manual input</span>
+            <strong>📍 Data Source:</strong> <span id="dataSource">Manual input</span>
         </div>
         
         <div class="controls">
@@ -355,119 +350,19 @@ year,temperature,location
         </div>
         
         <div class="info-panel">
-            <div id="statusInfo">Connect to ROHub Dataset Loader or load CSV data to create warming stripes visualization...</div>
+            <div id="statusInfo">Load CSV data to create warming stripes visualization...</div>
         </div>
     </div>
     
     <div class="tooltip" id="tooltip"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@metaframe/core@latest/dist/index.js"></script>
     <script>
-        // Safari-Compatible Metaframe Implementation using PostMessage API
-        class SafariMetaframe {
-            constructor() {
-                this.inputs = {};
-                this.outputs = {};
-                this.inputCallbacks = [];
-                this.stateCallbacks = [];
-                
-                // Listen for messages from parent window (metapage)
-                window.addEventListener('message', (event) => {
-                    this.handleMessage(event);
-                });
-                
-                // Send ready signal to parent
-                this.sendToParent({
-                    type: 'metaframe_ready',
-                    source: 'metaframe',
-                    id: 'warming-stripes'
-                });
-                
-                console.log('Safari-compatible metaframe initialized');
-            }
-            
-            handleMessage(event) {
-                console.log('Received message:', event.data);
-                
-                if (event.data && event.data.type) {
-                    switch (event.data.type) {
-                        case 'metaframe_inputs':
-                            this.inputs = event.data.inputs || {};
-                            this.triggerInputCallbacks(this.inputs);
-                            break;
-                        case 'metaframe_state':
-                            this.triggerStateCallbacks(event.data.state);
-                            break;
-                        case 'setInputs':
-                            // Alternative input format
-                            this.inputs = event.data.inputs || {};
-                            this.triggerInputCallbacks(this.inputs);
-                            break;
-                    }
-                }
-            }
-            
-            onInputs(callback) {
-                this.inputCallbacks.push(callback);
-                console.log('Input callback registered');
-                // If we already have inputs, call the callback immediately
-                if (Object.keys(this.inputs).length > 0) {
-                    callback(this.inputs);
-                }
-            }
-            
-            onState(callback) {
-                this.stateCallbacks.push(callback);
-                console.log('State callback registered');
-            }
-            
-            setOutputs(outputs) {
-                this.outputs = outputs;
-                this.sendToParent({
-                    type: 'metaframe_outputs',
-                    outputs: outputs,
-                    source: 'metaframe',
-                    id: 'warming-stripes'
-                });
-                console.log('Outputs set:', outputs);
-            }
-            
-            sendToParent(message) {
-                if (window.parent !== window) {
-                    window.parent.postMessage(message, '*');
-                    console.log('Sent to parent:', message);
-                } else {
-                    console.log('No parent window - running standalone');
-                }
-            }
-            
-            triggerInputCallbacks(inputs) {
-                console.log(`Triggering ${this.inputCallbacks.length} input callbacks`);
-                this.inputCallbacks.forEach(callback => {
-                    try {
-                        callback(inputs);
-                    } catch (e) {
-                        console.error('Error in input callback:', e);
-                    }
-                });
-            }
-            
-            triggerStateCallbacks(state) {
-                console.log(`Triggering ${this.stateCallbacks.length} state callbacks`);
-                this.stateCallbacks.forEach(callback => {
-                    try {
-                        callback(state);
-                    } catch (e) {
-                        console.error('Error in state callback:', e);
-                    }
-                });
-            }
-        }
-
         let metaframe;
         let parsedData = [];
         let canvas, ctx;
         let tooltip;
-        let lastInputMetadata = null;
+        let receivedFromMetaframe = false;
         
         // Enhanced color scales with more options
         const colorScales = {
@@ -509,59 +404,15 @@ year,temperature,location
             }
         };
 
-        // Initialize everything
-        function initializeApp() {
-            console.log('Initializing Safari-compatible warming stripes app...');
-            
-            // Initialize metaframe
-            metaframe = new SafariMetaframe();
-            
-            // Set up input handlers
-            metaframe.onInputs(function(inputs) {
-                console.log('Received inputs from ROHub loader:', inputs);
-                
-                if (inputs.csvData) {
-                    // Mark the data input section as auto-detected
-                    const dataInput = document.querySelector('.data-input');
-                    dataInput.classList.add('auto-detect');
-                    
-                    // Update input status
-                    document.getElementById('inputStatusText').innerHTML = '✅ Data received from ROHub Dataset Loader';
-                    document.getElementById('inputSource').textContent = 'ROHub Dataset Loader (auto-connected)';
-                    
-                    // Load the CSV data
-                    document.getElementById('csvData').value = inputs.csvData;
-                    
-                    // Store metadata if available
-                    if (inputs.metadata) {
-                        lastInputMetadata = inputs.metadata;
-                        document.getElementById('inputSource').textContent = `ROHub: ${inputs.metadata.name}`;
-                    }
-                    
-                    // Auto-parse the data
-                    parseCSVData();
-                    
-                    showStatus('✅ Data automatically loaded from ROHub Dataset Loader!', 'success');
-                } else {
-                    // Remove auto-detect styling if no data
-                    const dataInput = document.querySelector('.data-input');
-                    dataInput.classList.remove('auto-detect');
-                    
-                    document.getElementById('inputStatusText').innerHTML = '⏳ Waiting for data from ROHub Dataset Loader...';
-                    document.getElementById('inputSource').textContent = 'Waiting for connection...';
-                }
-            });
-            
-            // Set up state handlers
-            metaframe.onState(function(state) {
-                console.log('Metaframe state:', state);
-            });
-            
-            document.getElementById('metaframeStatus').textContent = 'Connected and ready (Safari compatible)';
-            console.log('Safari-compatible metaframe initialized successfully');
-        }
-
         window.addEventListener('load', function() {
+            console.log('🚀 Initializing debug warming stripes app...');
+            
+            // Detect frame context
+            const isInFrame = window.parent !== window;
+            document.getElementById('frameInfo').textContent = isInFrame ? 
+                'Inside iframe (has parent)' : 'Standalone mode';
+            console.log(isInFrame ? 'Running inside iframe' : 'Running standalone');
+            
             canvas = document.getElementById('stripesCanvas');
             ctx = canvas.getContext('2d');
             tooltip = document.getElementById('tooltip');
@@ -572,9 +423,173 @@ year,temperature,location
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseleave', hideTooltip);
             
-            // Initialize the app
-            initializeApp();
+            // Initialize metaframe with debug logging
+            try {
+                console.log('Initializing debug metaframe...');
+                
+                if (typeof Metaframe !== 'undefined') {
+                    metaframe = new Metaframe();
+                    console.log('Debug metaframe initialized');
+                    
+                    // Set up comprehensive input handler with debug logging
+                    metaframe.onInputs((inputs) => {
+                        console.log('📥 Input callback registered (total: 1)');
+                        handleMetaframeInputs(inputs);
+                    });
+                    
+                    metaframe.onState((state) => {
+                        console.log('📊 State callback registered (total: 1)');
+                        console.log('State received:', state);
+                    });
+                    
+                    console.log('✅ Debug app initialization complete');
+                    
+                    // Send ready signals with debug logging
+                    console.log('Sending ready signals...');
+                    
+                    // Signal 1: metaframe_ready
+                    metaframe.setOutputs({
+                        type: 'metaframe_ready',
+                        appName: 'Warming Stripes Visualizer',
+                        version: '2.0',
+                        timestamp: new Date().toISOString(),
+                        capabilities: ['csv', 'json', 'visualization'],
+                        status: 'ready'
+                    });
+                    console.log('Sent message type: metaframe_ready');
+                    console.log('Sent ready signal 1/3');
+                    
+                    // Signal 2: ready
+                    setTimeout(() => {
+                        if (metaframe && metaframe.setOutputs) {
+                            metaframe.setOutputs({
+                                ready: true,
+                                timestamp: new Date().toISOString()
+                            });
+                            console.log('Sent message type: ready');
+                            console.log('Sent ready signal 2/3');
+                        }
+                    }, 100);
+                    
+                    // Signal 3: metaframe_init
+                    setTimeout(() => {
+                        if (metaframe && metaframe.setOutputs) {
+                            metaframe.setOutputs({
+                                type: 'metaframe_init',
+                                initialized: true,
+                                timestamp: new Date().toISOString()
+                            });
+                            console.log('Sent message type: metaframe_init');
+                            console.log('Sent ready signal 3/3');
+                        }
+                    }, 200);
+                    
+                    updateMetaframeStatus('Debug mode ready - monitoring communication');
+                    console.log('📡 **Metaframe Status:** Debug mode ready - monitoring communication');
+                    console.log('🔗 **Input Source:** Waiting for data...');
+                    console.log('🔧 **Version:** Communication Debug Mode');
+                    console.log('🆔 **Frame Info:** ' + (isInFrame ? 'Inside iframe (has parent)' : 'Standalone mode'));
+                    
+                } else {
+                    console.log('⚠️ Metaframe library not available');
+                    updateMetaframeStatus('Metaframe library not found');
+                    updateInputSource('Manual input only');
+                }
+                
+            } catch (error) {
+                console.error('❌ Metaframe initialization error:', error);
+                updateMetaframeStatus('Initialization failed: ' + error.message);
+                updateInputSource('Error - manual input only');
+            }
         });
+
+        function updateMetaframeStatus(status) {
+            document.getElementById('metaframeStatus').textContent = status;
+        }
+        
+        function updateInputSource(source) {
+            document.getElementById('inputSource').textContent = source;
+        }
+        
+        function updateDataSource(source) {
+            document.getElementById('dataSource').textContent = source;
+        }
+
+        function handleMetaframeInputs(inputs) {
+            console.log('🔄 Processing metaframe inputs:', inputs);
+            
+            try {
+                // Look for CSV data in various possible input formats
+                let csvData = null;
+                let dataName = 'Metaframe Data';
+                let sourceUrl = null;
+                
+                if (inputs.csvData) {
+                    csvData = inputs.csvData;
+                    console.log('✅ Found csvData field');
+                } else if (inputs.rawData) {
+                    csvData = inputs.rawData;
+                    console.log('✅ Found rawData field');
+                } else if (inputs.data && typeof inputs.data === 'string') {
+                    csvData = inputs.data;
+                    console.log('✅ Found data field (string)');
+                } else if (inputs.content) {
+                    csvData = inputs.content;
+                    console.log('✅ Found content field');
+                }
+                
+                // Extract metadata
+                if (inputs.dataName || inputs.name) {
+                    dataName = inputs.dataName || inputs.name;
+                }
+                
+                if (inputs.sourceUrl || inputs.url) {
+                    sourceUrl = inputs.sourceUrl || inputs.url;
+                }
+                
+                if (csvData) {
+                    console.log('📝 CSV data received, length:', csvData.length);
+                    console.log('📄 Data name:', dataName);
+                    if (sourceUrl) console.log('🔗 Source URL:', sourceUrl);
+                    
+                    // Update UI to show data received
+                    document.getElementById('csvData').value = csvData;
+                    updateInputSource(`ROHub Data Loader (${dataName})`);
+                    updateDataSource(`ROHub: ${dataName}${sourceUrl ? ` (${sourceUrl})` : ''}`);
+                    receivedFromMetaframe = true;
+                    
+                    // Automatically parse the received data
+                    parseCSVData();
+                    
+                    showStatus('✅ Data received from ROHub Data Loader!', 'success');
+                    
+                } else {
+                    console.log('❓ No recognizable CSV data found in inputs');
+                    console.log('Available input keys:', Object.keys(inputs));
+                }
+                
+                // Also check for pre-parsed data
+                if (inputs.parsedData && Array.isArray(inputs.parsedData)) {
+                    console.log('📊 Pre-parsed data received:', inputs.parsedData.length, 'rows');
+                    parsedData = inputs.parsedData;
+                    updateColumnOptions();
+                    updateDatasetInfo();
+                    
+                    // Try to auto-update visualization if we have good data
+                    if (parsedData.length > 0) {
+                        setTimeout(() => {
+                            if (document.getElementById('xColumn').value && document.getElementById('yColumn').value) {
+                                updateVisualization();
+                            }
+                        }, 500);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Error processing metaframe inputs:', error);
+                showStatus(`❌ Error processing received data: ${error.message}`, 'error');
+            }
+        }
 
         function resizeCanvas() {
             const container = canvas.parentElement;
@@ -609,7 +624,7 @@ year,temperature,location
             const separatorSelect = document.getElementById('separator');
             
             if (!csvText) {
-                showStatus('❌ Please enter CSV data or connect to ROHub Dataset Loader', 'error');
+                showStatus('❌ Please enter CSV data', 'error');
                 return;
             }
             
@@ -617,7 +632,11 @@ year,temperature,location
                 let separator = separatorSelect.value;
                 if (separator === 'auto') {
                     separator = detectSeparator(csvText);
-                    showStatus(`🔍 Auto-detected separator: "${separator}"`, 'success');
+                    if (receivedFromMetaframe) {
+                        console.log(`🔍 Auto-detected separator: "${separator}"`);
+                    } else {
+                        showStatus(`🔍 Auto-detected separator: "${separator}"`, 'success');
+                    }
                 }
                 
                 if (separator === '\\t') separator = '\t';
@@ -647,10 +666,25 @@ year,temperature,location
                 parsedData = data;
                 updateColumnOptions();
                 updateDatasetInfo();
-                showStatus(`✅ Parsed ${data.length} rows with ${headers.length} columns`, 'success');
+                
+                const successMessage = `✅ Parsed ${data.length} rows with ${headers.length} columns`;
+                console.log(successMessage);
+                
+                if (!receivedFromMetaframe) {
+                    showStatus(successMessage, 'success');
+                }
+                
+                // Auto-update visualization if columns are selected
+                setTimeout(() => {
+                    if (document.getElementById('xColumn').value && document.getElementById('yColumn').value) {
+                        updateVisualization();
+                    }
+                }, 100);
                 
             } catch (error) {
-                showStatus(`❌ CSV parsing error: ${error.message}`, 'error');
+                const errorMsg = `❌ CSV parsing error: ${error.message}`;
+                console.error(errorMsg);
+                showStatus(errorMsg, 'error');
             }
         }
 
@@ -713,32 +747,19 @@ year,temperature,location
                 ySelect.value = valueCol;
             }
             
-            // If we have good defaults, auto-update the visualization
-            if (yearCol && valueCol) {
-                setTimeout(() => {
-                    updateVisualization();
-                }, 500);
-            }
+            console.log('🔧 Auto-selected columns:', { x: yearCol, y: valueCol });
         }
 
         function updateDatasetInfo() {
             const datasetInfo = document.getElementById('datasetInfo');
             const datasetStats = document.getElementById('datasetStats');
             const availableColumns = document.getElementById('availableColumns');
-            const dataSource = document.getElementById('dataSource');
             
             if (parsedData.length > 0) {
                 const columns = Object.keys(parsedData[0]);
                 
                 datasetStats.textContent = `${parsedData.length} rows, ${columns.length} columns`;
                 availableColumns.textContent = columns.join(', ');
-                
-                if (lastInputMetadata) {
-                    dataSource.innerHTML = `ROHub: <a href="${lastInputMetadata.url}" target="_blank">${lastInputMetadata.name}</a>`;
-                } else {
-                    dataSource.textContent = 'Manual input';
-                }
-                
                 datasetInfo.style.display = 'block';
             }
         }
@@ -768,12 +789,9 @@ year,temperature,location
 2023,15.1,1.1,Global`;
             
             document.getElementById('csvData').value = sampleCSV;
-            lastInputMetadata = null; // Clear metadata for sample data
-            
-            // Remove auto-detect styling
-            const dataInput = document.querySelector('.data-input');
-            dataInput.classList.remove('auto-detect');
-            
+            updateInputSource('Sample data loaded');
+            updateDataSource('Built-in sample dataset');
+            receivedFromMetaframe = false;
             parseCSVData();
         }
 
@@ -841,7 +859,7 @@ year,temperature,location
             const statusInfo = document.getElementById('statusInfo');
             
             if (parsedData.length === 0) {
-                statusInfo.innerHTML = '❌ No data loaded. Please connect to ROHub Dataset Loader or paste CSV data.';
+                statusInfo.innerHTML = '❌ No data loaded. Please paste CSV data or load from ROHub.';
                 return;
             }
             
@@ -911,17 +929,12 @@ year,temperature,location
             });
             
             // Update info
-            let sourceInfo = '';
-            if (lastInputMetadata) {
-                sourceInfo = `<br>🔗 <strong>Source:</strong> <a href="${lastInputMetadata.url}" target="_blank" style="color: #fff;">${lastInputMetadata.name}</a>`;
-            }
-            
             statusInfo.innerHTML = `
                 ✅ <strong>Visualization:</strong> ${filteredData.length} data points<br>
                 📈 <strong>X-Axis:</strong> ${xColumn}<br>
                 📊 <strong>Y-Axis:</strong> ${yColumn} (${minVal.toFixed(2)} to ${maxVal.toFixed(2)})<br>
                 🎨 <strong>Colormap:</strong> ${colorScale}<br>
-                📅 <strong>Range:</strong> ${startYear} - ${endYear}${sourceInfo}
+                📅 <strong>Range:</strong> ${startYear} - ${endYear}
             `;
         }
 
