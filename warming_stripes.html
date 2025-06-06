@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Warming Stripes Visualizer</title>
-    <script src="https://unpkg.com/@metapages/metaframe@0.10.9/dist/metaframe.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -405,63 +404,6 @@ year,temperature,location
             }
         });
 
-        // Handle inputs from metapage - this is the main entry point
-        const onInputs = (inputs) => {
-            console.log('Warming Stripes received inputs:', JSON.stringify(inputs));
-            
-            // Handle different types of data from ROHub loader
-            if (inputs.climateData && Array.isArray(inputs.climateData)) {
-                parsedData = inputs.climateData;
-                updateColumnOptions();
-                updateDatasetInfo();
-                drawWarmingStripes();
-                showStatus('✅ Received climate data from ROHub loader', 'success');
-            }
-            
-            if (inputs.parsedData && Array.isArray(inputs.parsedData)) {
-                parsedData = inputs.parsedData;
-                updateColumnOptions();
-                updateDatasetInfo();
-                drawWarmingStripes();
-                showStatus('✅ Received parsed data from ROHub loader', 'success');
-            }
-            
-            if (inputs.csvData && typeof inputs.csvData === 'string') {
-                document.getElementById('csvData').value = inputs.csvData;
-                parseCSVData();
-                showStatus('✅ Received CSV data from ROHub loader', 'success');
-            }
-            
-            if (inputs.rawContent && typeof inputs.rawContent === 'string' && 
-                (inputs.rawContent.includes(',') || inputs.rawContent.includes(';'))) {
-                document.getElementById('csvData').value = inputs.rawContent;
-                parseCSVData();
-                showStatus('✅ Received raw content from ROHub loader', 'success');
-            }
-            
-            // Handle control inputs
-            if (inputs.colorScale) {
-                document.getElementById('colorScale').value = inputs.colorScale;
-                updateVisualization();
-            }
-            
-            if (inputs.dateRange) {
-                if (inputs.dateRange.start) document.getElementById('startYear').value = inputs.dateRange.start;
-                if (inputs.dateRange.end) document.getElementById('endYear').value = inputs.dateRange.end;
-                updateVisualization();
-            }
-        };
-        
-        // Set outputs to metapage
-        function setOutput(name, value) {
-            if (metaframe) {
-                metaframe.setOutput(name, value);
-                console.log(`Set output: ${name}`, value);
-            } else {
-                console.log(`Would set output: ${name}`, value);
-            }
-        }
-
         function resizeCanvas() {
             const container = canvas.parentElement;
             const rect = container.getBoundingClientRect();
@@ -537,13 +479,6 @@ year,temperature,location
                 updateColumnOptions();
                 updateDatasetInfo();
                 showStatus(`✅ Parsed ${data.length} rows with ${headers.length} columns`, 'success');
-                
-                // Output to metapage
-                setOutput('parsedCSV', {
-                    headers: headers,
-                    data: data,
-                    rowCount: data.length
-                });
                 
             } catch (error) {
                 showStatus(`❌ CSV parsing error: ${error.message}`, 'error');
@@ -794,18 +729,6 @@ year,temperature,location
                 📅 <strong>Range:</strong> ${startYear} - ${endYear}
             `;
             
-            // Output visualization data to metapage
-            setOutput('visualizationConfig', {
-                xColumn,
-                yColumn,
-                startYear,
-                endYear,
-                colorScale,
-                dataPoints: filteredData.length,
-                valueRange: { min: minVal, max: maxVal, avg: avgVal }
-            });
-            
-            setOutput('stripesData', filteredData);
         }
 
         function handleMouseMove(event) {
