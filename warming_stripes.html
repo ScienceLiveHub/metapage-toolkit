@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Warming Stripes Visualizer</title>
+    <title>Interactive Warming Stripes Visualizer</title>
     <script src="https://unpkg.com/@metapages/metaframe@0.10.9/dist/metaframe.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #173968 0%, #be2e78 100%);
             min-height: 100vh;
         }
+        
         .container {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
@@ -20,9 +21,32 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .data-input {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
         .controls {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -30,37 +54,56 @@
             margin-bottom: 25px;
             align-items: end;
         }
+        
         .control-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
+        
         label {
-            font-size: 12px;
+            font-size: 13px;
             opacity: 0.9;
             font-weight: 600;
         }
-        select, input {
-            padding: 8px;
+        
+        select, input, textarea {
+            padding: 10px;
             border: none;
             border-radius: 6px;
             background: rgba(255, 255, 255, 0.9);
             color: #333;
             font-size: 14px;
         }
+        
+        textarea {
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
         button {
-            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            background: linear-gradient(45deg, #be2e78, #173968);
             color: white;
             border: none;
-            padding: 10px 16px;
+            padding: 12px 20px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
             transition: transform 0.2s;
+            font-size: 14px;
         }
-        button:hover {
+        
+        button:hover:not(:disabled) {
             transform: translateY(-2px);
         }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .canvas-container {
             background: white;
             border-radius: 10px;
@@ -68,13 +111,16 @@
             margin: 20px 0;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
+        
         #stripesCanvas {
             width: 100%;
-            height: 200px;
+            height: 250px;
             cursor: crosshair;
             border: 2px solid #eee;
             border-radius: 5px;
+            display: block;
         }
+        
         .legend {
             display: flex;
             justify-content: center;
@@ -84,24 +130,34 @@
             font-size: 14px;
             color: #333;
         }
+        
         .legend-item {
             display: flex;
             align-items: center;
             gap: 8px;
         }
+        
         .legend-color {
-            width: 20px;
+            width: 25px;
             height: 20px;
             border-radius: 3px;
+            border: 1px solid #ccc;
         }
+        
+        .legend-value {
+            font-weight: 600;
+            font-size: 12px;
+        }
+        
         .info-panel {
             background: rgba(0, 0, 0, 0.2);
             border-radius: 8px;
             padding: 15px;
             margin-top: 15px;
             font-size: 14px;
-            line-height: 1.4;
+            line-height: 1.5;
         }
+        
         .tooltip {
             position: absolute;
             background: rgba(0, 0, 0, 0.9);
@@ -113,24 +169,91 @@
             z-index: 1000;
             opacity: 0;
             transition: opacity 0.2s;
+            max-width: 200px;
         }
+        
         .dataset-info {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .error {
+            background: rgba(220, 53, 69, 0.3);
+            border: 1px solid rgba(220, 53, 69, 0.5);
             padding: 10px;
-            margin-bottom: 15px;
-            font-size: 12px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: rgba(40, 167, 69, 0.3);
+            border: 1px solid rgba(40, 167, 69, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .data-preview {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🌡️ Enhanced Warming Stripes</h1>
-        <p>Interactive climate visualization with column selection and multiple colormaps</p>
+        <div class="header">
+            <h1>🌡️ Interactive Warming Stripes</h1>
+            <p>Create beautiful climate visualizations from CSV data with customizable colormaps</p>
+        </div>
+        
+        <div class="data-input">
+            <h3>📊 Data Input</h3>
+            <div class="control-group">
+                <label>CSV Data (paste or load from ROHub):</label>
+                <textarea id="csvData" rows="6" placeholder="Paste your CSV data here, or load from the ROHub Dataset Loader...
+
+Example format:
+year,temperature,location
+1880,13.8,Global
+1881,13.9,Global
+1882,13.7,Global"></textarea>
+            </div>
+            
+            <div class="controls" style="margin-top: 15px;">
+                <div class="control-group">
+                    <label>CSV Separator:</label>
+                    <select id="separator">
+                        <option value="auto">Auto-detect</option>
+                        <option value=",">,</option>
+                        <option value=";">;</option>
+                        <option value="\t">Tab</option>
+                        <option value="|">|</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="parseCSVData()">📋 Parse CSV</button>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="loadSampleData()">📊 Load Sample Data</button>
+                </div>
+            </div>
+        </div>
         
         <div id="datasetInfo" class="dataset-info" style="display: none;">
-            <strong>📊 Dataset loaded:</strong> <span id="datasetName">None</span><br>
-            <strong>📋 Available columns:</strong> <span id="availableColumns">None</span>
+            <strong>📈 Parsed Data:</strong> <span id="datasetStats">None</span><br>
+            <strong>📋 Available Columns:</strong> <span id="availableColumns">None</span>
         </div>
         
         <div class="controls">
@@ -150,7 +273,7 @@
             
             <div class="control-group">
                 <label>Start Year:</label>
-                <input type="number" id="startYear" value="1950" min="1800" max="2030">
+                <input type="number" id="startYear" value="1880" min="1800" max="2030">
             </div>
             
             <div class="control-group">
@@ -168,6 +291,8 @@
                     <option value="rdbu">Red-Blue</option>
                     <option value="spectral">Spectral</option>
                     <option value="turbo">Turbo</option>
+                    <option value="inferno">Inferno</option>
+                    <option value="magma">Magma</option>
                 </select>
             </div>
             
@@ -176,7 +301,7 @@
             </div>
             
             <div class="control-group">
-                <button onclick="exportImage()" style="background: linear-gradient(45deg, #4ecdc4, #44a08d);">📸 Export PNG</button>
+                <button onclick="exportImage()">📸 Export PNG</button>
             </div>
         </div>
         
@@ -185,21 +310,30 @@
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-color" id="legendLow"></div>
-                    <span>Low</span>
+                    <div>
+                        <div>Low</div>
+                        <div class="legend-value" id="legendLowValue">-</div>
+                    </div>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" id="legendMid"></div>
-                    <span>Average</span>
+                    <div>
+                        <div>Average</div>
+                        <div class="legend-value" id="legendMidValue">-</div>
+                    </div>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" id="legendHigh"></div>
-                    <span>High</span>
+                    <div>
+                        <div>High</div>
+                        <div class="legend-value" id="legendHighValue">-</div>
+                    </div>
                 </div>
             </div>
         </div>
         
         <div class="info-panel">
-            <div id="dataInfo">Waiting for data from ROHub loader...</div>
+            <div id="statusInfo">Load CSV data to create warming stripes visualization...</div>
         </div>
     </div>
     
@@ -207,11 +341,11 @@
 
     <script>
         let metaframe;
-        let climateData = [];
+        let parsedData = [];
         let canvas, ctx;
         let tooltip;
         
-        // Enhanced color scales
+        // Enhanced color scales with more options
         const colorScales = {
             classic: {
                 colors: [[8, 81, 156], [255, 255, 255], [165, 15, 21]],
@@ -240,6 +374,14 @@
             turbo: {
                 colors: [[48, 18, 59], [80, 2, 148], [182, 54, 121], [251, 135, 97], [254, 206, 84], [239, 254, 240]],
                 positions: [0, 0.2, 0.4, 0.6, 0.8, 1]
+            },
+            inferno: {
+                colors: [[0, 0, 4], [31, 12, 72], [85, 15, 109], [136, 34, 106], [186, 54, 85], [227, 89, 51], [249, 140, 10], [249, 201, 50], [252, 255, 164]],
+                positions: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
+            },
+            magma: {
+                colors: [[0, 0, 4], [28, 16, 68], [79, 18, 123], [129, 37, 129], [181, 54, 122], [229, 80, 100], [251, 135, 97], [254, 194, 135], [252, 253, 191]],
+                positions: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
             }
         };
 
@@ -254,13 +396,18 @@
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseleave', hideTooltip);
             
+            // Initialize metaframe
             if (typeof Metaframe !== 'undefined') {
                 metaframe = new Metaframe();
-                metaframe.onInput('climateData', handleClimateData);
-                console.log('Enhanced Warming Stripes initialized');
+                
+                // Listen for inputs from ROHub loader
+                metaframe.onInput('rawContent', handleRawContent);
+                metaframe.onInput('parsedData', handleParsedData);
+                metaframe.onInput('resourceData', handleResourceData);
+                
+                console.log('Warming Stripes Visualizer initialized - waiting for data from ROHub loader');
             } else {
                 console.log('Running in standalone mode');
-                generateSampleData();
             }
         });
 
@@ -268,29 +415,122 @@
             const container = canvas.parentElement;
             const rect = container.getBoundingClientRect();
             canvas.width = rect.width - 40;
-            canvas.height = 200;
-            if (climateData.length > 0) {
+            canvas.height = 250;
+            if (parsedData.length > 0) {
                 drawWarmingStripes();
             }
         }
 
-        function handleClimateData(data) {
-            if (data && Array.isArray(data)) {
-                climateData = data;
+        // Handle different input formats from ROHub loader
+        function handleRawContent(content) {
+            if (typeof content === 'string' && content.includes(',')) {
+                document.getElementById('csvData').value = content;
+                parseCSVData();
+                showStatus('✅ Received CSV data from ROHub loader', 'success');
+            }
+        }
+
+        function handleParsedData(data) {
+            if (data && (Array.isArray(data) || (data.data && Array.isArray(data.data)))) {
+                if (data.data) {
+                    // CSV format with headers
+                    parsedData = data.data;
+                } else {
+                    // Direct array
+                    parsedData = data;
+                }
                 updateColumnOptions();
                 updateDatasetInfo();
                 drawWarmingStripes();
-                console.log('Received climate data:', data.length, 'records');
+                showStatus('✅ Received parsed data from ROHub loader', 'success');
+            }
+        }
+
+        function handleResourceData(data) {
+            handleParsedData(data);
+        }
+
+        function detectSeparator(csvText) {
+            const separators = [',', ';', '\t', '|'];
+            const firstLine = csvText.split('\n')[0];
+            
+            let bestSep = ',';
+            let maxCount = 0;
+            
+            separators.forEach(sep => {
+                const count = (firstLine.match(new RegExp(`\\${sep}`, 'g')) || []).length;
+                if (count > maxCount) {
+                    maxCount = count;
+                    bestSep = sep;
+                }
+            });
+            
+            return bestSep;
+        }
+
+        function parseCSVData() {
+            const csvText = document.getElementById('csvData').value.trim();
+            const separatorSelect = document.getElementById('separator');
+            
+            if (!csvText) {
+                showStatus('❌ Please enter CSV data', 'error');
+                return;
+            }
+            
+            try {
+                let separator = separatorSelect.value;
+                if (separator === 'auto') {
+                    separator = detectSeparator(csvText);
+                    showStatus(`🔍 Auto-detected separator: "${separator}"`, 'success');
+                }
+                
+                if (separator === '\\t') separator = '\t';
+                
+                const lines = csvText.split('\n').filter(line => line.trim());
+                if (lines.length < 2) {
+                    throw new Error('CSV must have at least 2 lines (header + data)');
+                }
+                
+                const headers = lines[0].split(separator).map(h => h.trim().replace(/^["']|["']$/g, ''));
+                const data = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(separator).map(v => v.trim().replace(/^["']|["']$/g, ''));
+                    if (values.length === headers.length) {
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            // Try to parse as number
+                            const value = values[index];
+                            const numValue = parseFloat(value);
+                            row[header] = isNaN(numValue) ? value : numValue;
+                        });
+                        data.push(row);
+                    }
+                }
+                
+                parsedData = data;
+                updateColumnOptions();
+                updateDatasetInfo();
+                showStatus(`✅ Parsed ${data.length} rows with ${headers.length} columns`, 'success');
+                
+                // Output to metapage
+                if (metaframe) {
+                    metaframe.setOutput('parsedCSV', {
+                        headers: headers,
+                        data: data,
+                        rowCount: data.length
+                    });
+                }
+                
+            } catch (error) {
+                showStatus(`❌ CSV parsing error: ${error.message}`, 'error');
             }
         }
 
         function updateColumnOptions() {
-            if (climateData.length === 0) return;
+            if (parsedData.length === 0) return;
             
-            const columns = Object.keys(climateData[0]).filter(key => 
-                key !== 'source' && typeof climateData[0][key] !== 'undefined'
-            );
-            
+            const columns = Object.keys(parsedData[0]);
             const xSelect = document.getElementById('xColumn');
             const ySelect = document.getElementById('yColumn');
             
@@ -313,51 +553,80 @@
             // Auto-select reasonable defaults
             const yearCol = columns.find(c => 
                 c.toLowerCase().includes('year') || 
-                c === 'year' ||
-                (climateData[0][c] && String(climateData[0][c]).match(/\d{4}/))
+                c.toLowerCase().includes('time') ||
+                c.toLowerCase().includes('date') ||
+                (parsedData[0][c] && String(parsedData[0][c]).match(/\d{4}/))
             );
             
             const valueCol = columns.find(c => 
                 c.toLowerCase().includes('temp') || 
                 c.toLowerCase().includes('anomal') ||
                 c.toLowerCase().includes('avg') ||
-                (typeof climateData[0][c] === 'number' && c !== yearCol)
+                c.toLowerCase().includes('value') ||
+                (typeof parsedData[0][c] === 'number' && c !== yearCol)
             );
             
-            if (yearCol) xSelect.value = yearCol;
-            if (valueCol) ySelect.value = valueCol;
+            if (yearCol) {
+                xSelect.value = yearCol;
+                // Auto-detect year range
+                const years = parsedData.map(d => {
+                    const val = d[yearCol];
+                    if (typeof val === 'number') return val;
+                    const match = String(val).match(/(\d{4})/);
+                    return match ? parseInt(match[1]) : null;
+                }).filter(y => y !== null);
+                
+                if (years.length > 0) {
+                    document.getElementById('startYear').value = Math.min(...years);
+                    document.getElementById('endYear').value = Math.max(...years);
+                }
+            }
+            
+            if (valueCol) {
+                ySelect.value = valueCol;
+            }
         }
 
         function updateDatasetInfo() {
             const datasetInfo = document.getElementById('datasetInfo');
-            const datasetName = document.getElementById('datasetName');
+            const datasetStats = document.getElementById('datasetStats');
             const availableColumns = document.getElementById('availableColumns');
             
-            if (climateData.length > 0) {
-                const source = climateData[0].source || 'Unknown';
-                const columns = Object.keys(climateData[0]).filter(key => key !== 'source');
+            if (parsedData.length > 0) {
+                const columns = Object.keys(parsedData[0]);
                 
-                datasetName.textContent = `${source} (${climateData.length} records)`;
+                datasetStats.textContent = `${parsedData.length} rows, ${columns.length} columns`;
                 availableColumns.textContent = columns.join(', ');
                 datasetInfo.style.display = 'block';
             }
         }
 
-        function generateSampleData() {
-            const data = [];
-            for (let year = 1950; year <= 2023; year++) {
-                const temp = 14 + (year - 1950) * 0.02 + (Math.random() - 0.5) * 2;
-                data.push({
-                    year: year,
-                    temperature: Math.round(temp * 100) / 100,
-                    anomaly: Math.round((temp - 14) * 100) / 100,
-                    source: 'Sample Data'
-                });
-            }
-            climateData = data;
-            updateColumnOptions();
-            updateDatasetInfo();
-            drawWarmingStripes();
+        function loadSampleData() {
+            const sampleCSV = `year,temperature,anomaly,region
+1880,13.8,-0.2,Global
+1881,13.9,-0.1,Global
+1882,13.7,-0.3,Global
+1883,13.6,-0.4,Global
+1884,13.4,-0.6,Global
+1885,13.5,-0.5,Global
+1890,13.3,-0.7,Global
+1900,13.9,-0.1,Global
+1910,13.6,-0.4,Global
+1920,13.8,-0.2,Global
+1930,14.0,0.0,Global
+1940,14.1,0.1,Global
+1950,13.9,-0.1,Global
+1960,14.0,0.0,Global
+1970,14.1,0.1,Global
+1980,14.3,0.3,Global
+1990,14.4,0.4,Global
+2000,14.6,0.6,Global
+2010,14.7,0.7,Global
+2020,15.0,1.0,Global
+2023,15.1,1.1,Global`;
+            
+            document.getElementById('csvData').value = sampleCSV;
+            parseCSVData();
         }
 
         function getColorFromScale(value, scaleName) {
@@ -390,10 +659,13 @@
             ];
         }
 
-        function updateLegend(scaleName, minVal, maxVal) {
+        function updateLegend(scaleName, minVal, maxVal, avgVal) {
             const legendLow = document.getElementById('legendLow');
             const legendMid = document.getElementById('legendMid');
             const legendHigh = document.getElementById('legendHigh');
+            const legendLowValue = document.getElementById('legendLowValue');
+            const legendMidValue = document.getElementById('legendMidValue');
+            const legendHighValue = document.getElementById('legendHighValue');
             
             const lowColor = getColorFromScale(0, scaleName);
             const midColor = getColorFromScale(0.5, scaleName);
@@ -402,9 +674,13 @@
             legendLow.style.background = `rgb(${lowColor.join(',')})`;
             legendMid.style.background = `rgb(${midColor.join(',')})`;
             legendHigh.style.background = `rgb(${highColor.join(',')})`;
+            
+            legendLowValue.textContent = minVal.toFixed(2);
+            legendMidValue.textContent = avgVal.toFixed(2);
+            legendHighValue.textContent = maxVal.toFixed(2);
         }
 
-        window.updateVisualization = function() {
+        function updateVisualization() {
             drawWarmingStripes();
         }
 
@@ -414,24 +690,28 @@
             const startYear = parseInt(document.getElementById('startYear').value);
             const endYear = parseInt(document.getElementById('endYear').value);
             const colorScale = document.getElementById('colorScale').value;
-            const dataInfo = document.getElementById('dataInfo');
+            const statusInfo = document.getElementById('statusInfo');
             
-            if (climateData.length === 0) {
-                dataInfo.innerHTML = 'No data loaded. Use the ROHub Data Loader to load climate data.';
+            if (parsedData.length === 0) {
+                statusInfo.innerHTML = '❌ No data loaded. Please paste CSV data or load from ROHub.';
                 return;
             }
             
             if (!xColumn || !yColumn) {
-                dataInfo.innerHTML = 'Please select both X and Y columns to create warming stripes.';
+                statusInfo.innerHTML = '❌ Please select both X and Y columns to create warming stripes.';
                 return;
             }
             
             // Filter and sort data
-            let filteredData = climateData.filter(d => {
+            let filteredData = parsedData.filter(d => {
                 const xVal = d[xColumn];
+                const yVal = d[yColumn];
+                
+                if (typeof yVal !== 'number' || isNaN(yVal)) return false;
+                
                 if (xColumn.toLowerCase().includes('year') || typeof xVal === 'string') {
-                    const year = parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
-                    return year >= startYear && year <= endYear;
+                    const year = typeof xVal === 'number' ? xVal : parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
+                    return year >= startYear && year <= endYear && !isNaN(year);
                 }
                 return true;
             });
@@ -452,7 +732,7 @@
             });
             
             if (filteredData.length === 0) {
-                dataInfo.innerHTML = 'No data in selected range.';
+                statusInfo.innerHTML = '❌ No data in selected range.';
                 return;
             }
             
@@ -460,20 +740,19 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Get Y values for normalization
-            const yValues = filteredData.map(d => parseFloat(d[yColumn])).filter(v => !isNaN(v));
+            const yValues = filteredData.map(d => d[yColumn]);
             const minVal = Math.min(...yValues);
             const maxVal = Math.max(...yValues);
             const avgVal = yValues.reduce((a, b) => a + b, 0) / yValues.length;
             
             // Update legend
-            updateLegend(colorScale, minVal, maxVal);
+            updateLegend(colorScale, minVal, maxVal, avgVal);
             
             // Draw stripes
             const stripeWidth = canvas.width / filteredData.length;
             
             filteredData.forEach((dataPoint, index) => {
-                const yVal = parseFloat(dataPoint[yColumn]);
-                if (isNaN(yVal)) return;
+                const yVal = dataPoint[yColumn];
                 
                 // Normalize to 0-1 range
                 const normalized = (yVal - minVal) / (maxVal - minVal);
@@ -484,20 +763,33 @@
             });
             
             // Update info
-            dataInfo.innerHTML = `
-                <strong>📊 Visualization:</strong> ${filteredData.length} data points<br>
-                <strong>📈 X-Axis:</strong> ${xColumn}<br>
-                <strong>📊 Y-Axis:</strong> ${yColumn} (${minVal.toFixed(2)} to ${maxVal.toFixed(2)})<br>
-                <strong>🎨 Colormap:</strong> ${colorScale}<br>
-                <strong>📅 Range:</strong> ${startYear} - ${endYear}
+            statusInfo.innerHTML = `
+                ✅ <strong>Visualization:</strong> ${filteredData.length} data points<br>
+                📈 <strong>X-Axis:</strong> ${xColumn}<br>
+                📊 <strong>Y-Axis:</strong> ${yColumn} (${minVal.toFixed(2)} to ${maxVal.toFixed(2)})<br>
+                🎨 <strong>Colormap:</strong> ${colorScale}<br>
+                📅 <strong>Range:</strong> ${startYear} - ${endYear}
             `;
+            
+            // Output visualization data to metapage
+            if (metaframe) {
+                metaframe.setOutput('visualizationConfig', {
+                    xColumn,
+                    yColumn,
+                    startYear,
+                    endYear,
+                    colorScale,
+                    dataPoints: filteredData.length,
+                    valueRange: { min: minVal, max: maxVal, avg: avgVal }
+                });
+            }
         }
 
         function handleMouseMove(event) {
             const xColumn = document.getElementById('xColumn').value;
             const yColumn = document.getElementById('yColumn').value;
             
-            if (!xColumn || !yColumn || climateData.length === 0) return;
+            if (!xColumn || !yColumn || parsedData.length === 0) return;
             
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
@@ -505,11 +797,15 @@
             const startYear = parseInt(document.getElementById('startYear').value);
             const endYear = parseInt(document.getElementById('endYear').value);
             
-            let filteredData = climateData.filter(d => {
+            let filteredData = parsedData.filter(d => {
                 const xVal = d[xColumn];
+                const yVal = d[yColumn];
+                
+                if (typeof yVal !== 'number' || isNaN(yVal)) return false;
+                
                 if (xColumn.toLowerCase().includes('year') || typeof xVal === 'string') {
-                    const year = parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
-                    return year >= startYear && year <= endYear;
+                    const year = typeof xVal === 'number' ? xVal : parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
+                    return year >= startYear && year <= endYear && !isNaN(year);
                 }
                 return true;
             });
@@ -524,12 +820,19 @@
         }
 
         function showTooltip(x, y, dataPoint, xCol, yCol) {
-            tooltip.innerHTML = `
-                <strong>${xCol}:</strong> ${dataPoint[xCol]}<br>
-                <strong>${yCol}:</strong> ${dataPoint[yCol]}<br>
-                <strong>Source:</strong> ${dataPoint.source || 'Unknown'}
-            `;
-            tooltip.style.left = x + 10 + 'px';
+            const allColumns = Object.keys(dataPoint);
+            let tooltipContent = `<strong>${xCol}:</strong> ${dataPoint[xCol]}<br>`;
+            tooltipContent += `<strong>${yCol}:</strong> ${dataPoint[yCol]}<br>`;
+            
+            // Show other relevant columns
+            allColumns.forEach(col => {
+                if (col !== xCol && col !== yCol && dataPoint[col] !== undefined) {
+                    tooltipContent += `<strong>${col}:</strong> ${dataPoint[col]}<br>`;
+                }
+            });
+            
+            tooltip.innerHTML = tooltipContent;
+            tooltip.style.left = Math.min(x + 10, window.innerWidth - 220) + 'px';
             tooltip.style.top = y - 10 + 'px';
             tooltip.style.opacity = '1';
         }
@@ -538,11 +841,52 @@
             tooltip.style.opacity = '0';
         }
 
-        window.exportImage = function() {
+        function exportImage() {
             const link = document.createElement('a');
             link.download = 'warming-stripes.png';
             link.href = canvas.toDataURL();
             link.click();
+            
+            showStatus('✅ Image exported successfully!', 'success');
+        }
+
+        function showStatus(message, type) {
+            const statusInfo = document.getElementById('statusInfo');
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            
+            if (className) {
+                const div = document.createElement('div');
+                div.className = className;
+                div.innerHTML = message;
+                document.querySelector('.info-panel').appendChild(div);
+                
+                setTimeout(() => {
+                    if (div.parentNode) {
+                        div.parentNode.removeChild(div);
+                    }
+                }, 3000);
+            } else {
+                statusInfo.innerHTML = message;
+            }
+        }
+
+        // Handle inputs from metapage (for external control)
+        function onInputs(inputs) {
+            if (inputs.csvData) {
+                document.getElementById('csvData').value = inputs.csvData;
+                parseCSVData();
+            }
+            
+            if (inputs.colorScale) {
+                document.getElementById('colorScale').value = inputs.colorScale;
+                updateVisualization();
+            }
+            
+            if (inputs.dateRange) {
+                if (inputs.dateRange.start) document.getElementById('startYear').value = inputs.dateRange.start;
+                if (inputs.dateRange.end) document.getElementById('endYear').value = inputs.dateRange.end;
+                updateVisualization();
+            }
         }
     </script>
 </body>
