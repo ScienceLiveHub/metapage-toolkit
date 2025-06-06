@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROHub Dataset Loader</title>
-    <script src="https://cdn.jsdelivr.net/npm/@metapages/metapage@1.8.3/dist/metapage.umd.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -221,8 +220,9 @@
         <h1>🔬 ROHub Dataset Loader</h1>
         
         <div class="metaframe-info">
-            📡 <strong>Metaframe Status:</strong> <span id="metaframeStatus">Initializing...</span><br>
-            🔗 <strong>Connected:</strong> Ready to send data to downstream metaframes
+            📡 <strong>Metaframe Status:</strong> <span id="metaframeStatus">Initializing Safari-compatible mode...</span><br>
+            🔗 <strong>Connected:</strong> Ready to send data to downstream metaframes<br>
+            🔧 <strong>Version:</strong> Safari Compatible (PostMessage API)
         </div>
         
         <div class="input-section">
@@ -266,20 +266,118 @@
     </div>
 
     <script>
+        // Safari-Compatible Metaframe Implementation using PostMessage API
+        class SafariMetaframe {
+            constructor() {
+                this.inputs = {};
+                this.outputs = {};
+                this.inputCallbacks = [];
+                this.stateCallbacks = [];
+                
+                // Listen for messages from parent window (metapage)
+                window.addEventListener('message', (event) => {
+                    this.handleMessage(event);
+                });
+                
+                // Send ready signal to parent
+                this.sendToParent({
+                    type: 'metaframe_ready',
+                    source: 'metaframe',
+                    id: 'rohub-loader'
+                });
+                
+                console.log('Safari-compatible metaframe initialized');
+            }
+            
+            handleMessage(event) {
+                console.log('Received message:', event.data);
+                
+                if (event.data && event.data.type) {
+                    switch (event.data.type) {
+                        case 'metaframe_inputs':
+                            this.inputs = event.data.inputs || {};
+                            this.triggerInputCallbacks(this.inputs);
+                            break;
+                        case 'metaframe_state':
+                            this.triggerStateCallbacks(event.data.state);
+                            break;
+                        case 'setInputs':
+                            // Alternative input format
+                            this.inputs = event.data.inputs || {};
+                            this.triggerInputCallbacks(this.inputs);
+                            break;
+                    }
+                }
+            }
+            
+            onInputs(callback) {
+                this.inputCallbacks.push(callback);
+                console.log('Input callback registered');
+                // If we already have inputs, call the callback immediately
+                if (Object.keys(this.inputs).length > 0) {
+                    callback(this.inputs);
+                }
+            }
+            
+            onState(callback) {
+                this.stateCallbacks.push(callback);
+                console.log('State callback registered');
+            }
+            
+            setOutputs(outputs) {
+                this.outputs = outputs;
+                this.sendToParent({
+                    type: 'metaframe_outputs',
+                    outputs: outputs,
+                    source: 'metaframe',
+                    id: 'rohub-loader'
+                });
+                console.log('Outputs set:', outputs);
+            }
+            
+            sendToParent(message) {
+                if (window.parent !== window) {
+                    window.parent.postMessage(message, '*');
+                    console.log('Sent to parent:', message);
+                } else {
+                    console.log('No parent window - running standalone');
+                }
+            }
+            
+            triggerInputCallbacks(inputs) {
+                console.log(`Triggering ${this.inputCallbacks.length} input callbacks`);
+                this.inputCallbacks.forEach(callback => {
+                    try {
+                        callback(inputs);
+                    } catch (e) {
+                        console.error('Error in input callback:', e);
+                    }
+                });
+            }
+            
+            triggerStateCallbacks(state) {
+                console.log(`Triggering ${this.stateCallbacks.length} state callbacks`);
+                this.stateCallbacks.forEach(callback => {
+                    try {
+                        callback(state);
+                    } catch (e) {
+                        console.error('Error in state callback:', e);
+                    }
+                });
+            }
+        }
+
         let metaframe;
         let currentData = null;
         let currentRO = null;
         
-        // Initialize metaframe
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Metaframe client
-            metaframe = new window.Metapage.Metaframe();
+        // Initialize metaframe when page loads
+        function initializeApp() {
+            console.log('Initializing Safari-compatible ROHub loader...');
             
-            metaframe.onState(function(state) {
-                console.log('Metaframe state:', state);
-                document.getElementById('metaframeStatus').textContent = 'Connected and ready';
-            });
-
+            // Initialize metaframe
+            metaframe = new SafariMetaframe();
+            
             // Handle inputs from other metaframes (optional, in case we want to receive ROHub URLs)
             metaframe.onInputs(function(inputs) {
                 console.log('Received inputs:', inputs);
@@ -288,6 +386,18 @@
                     detectUrlType();
                 }
             });
+            
+            // Set up state handlers
+            metaframe.onState(function(state) {
+                console.log('Metaframe state:', state);
+            });
+            
+            document.getElementById('metaframeStatus').textContent = 'Connected and ready (Safari compatible)';
+            console.log('Safari-compatible metaframe initialized successfully');
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
             
             // Auto-detect URL type on input
             document.getElementById('rohubUrl').addEventListener('input', detectUrlType);
@@ -626,7 +736,7 @@
             };
             
             // Send outputs to connected metaframes
-            if (metaframe) {
+            if (metaframe && metaframe.setOutputs) {
                 metaframe.setOutputs(outputs);
                 console.log('Data sent to metaframe outputs:', outputs);
                 
@@ -656,7 +766,7 @@
             currentRO = null;
             
             // Clear metaframe outputs
-            if (metaframe) {
+            if (metaframe && metaframe.setOutputs) {
                 metaframe.setOutputs({});
             }
         }

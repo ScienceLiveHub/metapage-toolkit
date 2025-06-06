@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Warming Stripes Visualizer</title>
-    <script src="https://cdn.jsdelivr.net/npm/@metapages/metapage@1.8.3/dist/metapage.umd.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -214,17 +213,6 @@
             border-radius: 5px;
             margin: 10px 0;
         }
-        
-        .data-preview {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 5px;
-            padding: 10px;
-            margin: 10px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
 
         .auto-detect {
             background: rgba(40, 167, 69, 0.2);
@@ -240,8 +228,9 @@
         </div>
 
         <div class="metaframe-info">
-            📡 <strong>Metaframe Status:</strong> <span id="metaframeStatus">Initializing...</span><br>
-            🔗 <strong>Input Source:</strong> <span id="inputSource">Waiting for data from ROHub Loader...</span>
+            📡 <strong>Metaframe Status:</strong> <span id="metaframeStatus">Initializing Safari-compatible mode...</span><br>
+            🔗 <strong>Input Source:</strong> <span id="inputSource">Waiting for data from ROHub Loader...</span><br>
+            🔧 <strong>Version:</strong> Safari Compatible (PostMessage API)
         </div>
 
         <div id="inputStatus" class="input-status">
@@ -373,6 +362,107 @@ year,temperature,location
     <div class="tooltip" id="tooltip"></div>
 
     <script>
+        // Safari-Compatible Metaframe Implementation using PostMessage API
+        class SafariMetaframe {
+            constructor() {
+                this.inputs = {};
+                this.outputs = {};
+                this.inputCallbacks = [];
+                this.stateCallbacks = [];
+                
+                // Listen for messages from parent window (metapage)
+                window.addEventListener('message', (event) => {
+                    this.handleMessage(event);
+                });
+                
+                // Send ready signal to parent
+                this.sendToParent({
+                    type: 'metaframe_ready',
+                    source: 'metaframe',
+                    id: 'warming-stripes'
+                });
+                
+                console.log('Safari-compatible metaframe initialized');
+            }
+            
+            handleMessage(event) {
+                console.log('Received message:', event.data);
+                
+                if (event.data && event.data.type) {
+                    switch (event.data.type) {
+                        case 'metaframe_inputs':
+                            this.inputs = event.data.inputs || {};
+                            this.triggerInputCallbacks(this.inputs);
+                            break;
+                        case 'metaframe_state':
+                            this.triggerStateCallbacks(event.data.state);
+                            break;
+                        case 'setInputs':
+                            // Alternative input format
+                            this.inputs = event.data.inputs || {};
+                            this.triggerInputCallbacks(this.inputs);
+                            break;
+                    }
+                }
+            }
+            
+            onInputs(callback) {
+                this.inputCallbacks.push(callback);
+                console.log('Input callback registered');
+                // If we already have inputs, call the callback immediately
+                if (Object.keys(this.inputs).length > 0) {
+                    callback(this.inputs);
+                }
+            }
+            
+            onState(callback) {
+                this.stateCallbacks.push(callback);
+                console.log('State callback registered');
+            }
+            
+            setOutputs(outputs) {
+                this.outputs = outputs;
+                this.sendToParent({
+                    type: 'metaframe_outputs',
+                    outputs: outputs,
+                    source: 'metaframe',
+                    id: 'warming-stripes'
+                });
+                console.log('Outputs set:', outputs);
+            }
+            
+            sendToParent(message) {
+                if (window.parent !== window) {
+                    window.parent.postMessage(message, '*');
+                    console.log('Sent to parent:', message);
+                } else {
+                    console.log('No parent window - running standalone');
+                }
+            }
+            
+            triggerInputCallbacks(inputs) {
+                console.log(`Triggering ${this.inputCallbacks.length} input callbacks`);
+                this.inputCallbacks.forEach(callback => {
+                    try {
+                        callback(inputs);
+                    } catch (e) {
+                        console.error('Error in input callback:', e);
+                    }
+                });
+            }
+            
+            triggerStateCallbacks(state) {
+                console.log(`Triggering ${this.stateCallbacks.length} state callbacks`);
+                this.stateCallbacks.forEach(callback => {
+                    try {
+                        callback(state);
+                    } catch (e) {
+                        console.error('Error in state callback:', e);
+                    }
+                });
+            }
+        }
+
         let metaframe;
         let parsedData = [];
         let canvas, ctx;
@@ -419,26 +509,14 @@ year,temperature,location
             }
         };
 
-        window.addEventListener('load', function() {
-            canvas = document.getElementById('stripesCanvas');
-            ctx = canvas.getContext('2d');
-            tooltip = document.getElementById('tooltip');
-            
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-            
-            canvas.addEventListener('mousemove', handleMouseMove);
-            canvas.addEventListener('mouseleave', hideTooltip);
+        // Initialize everything
+        function initializeApp() {
+            console.log('Initializing Safari-compatible warming stripes app...');
             
             // Initialize metaframe
-            metaframe = new window.Metapage.Metaframe();
+            metaframe = new SafariMetaframe();
             
-            metaframe.onState(function(state) {
-                console.log('Metaframe state:', state);
-                document.getElementById('metaframeStatus').textContent = 'Connected and ready';
-            });
-
-            // Handle inputs from ROHub Dataset Loader
+            // Set up input handlers
             metaframe.onInputs(function(inputs) {
                 console.log('Received inputs from ROHub loader:', inputs);
                 
@@ -473,6 +551,29 @@ year,temperature,location
                     document.getElementById('inputSource').textContent = 'Waiting for connection...';
                 }
             });
+            
+            // Set up state handlers
+            metaframe.onState(function(state) {
+                console.log('Metaframe state:', state);
+            });
+            
+            document.getElementById('metaframeStatus').textContent = 'Connected and ready (Safari compatible)';
+            console.log('Safari-compatible metaframe initialized successfully');
+        }
+
+        window.addEventListener('load', function() {
+            canvas = document.getElementById('stripesCanvas');
+            ctx = canvas.getContext('2d');
+            tooltip = document.getElementById('tooltip');
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseleave', hideTooltip);
+            
+            // Initialize the app
+            initializeApp();
         });
 
         function resizeCanvas() {
@@ -908,3 +1009,6 @@ year,temperature,location
                 statusInfo.innerHTML = message;
             }
         }
+    </script>
+</body>
+</html>
