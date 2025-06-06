@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metaframe Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 2px solid;
+        }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Metaframe Debug Test</h1>
+        <p>This page tests metaframe library loading and initialization</p>
+        
+        <div id="status-container">
+            <div class="status info">⏳ Initializing...</div>
+        </div>
+        
+        <h3>🔍 Debug Information</h3>
+        <div class="debug-info" id="debug-info">
+            Loading debug information...
+        </div>
+        
+        <h3>📤 Test Output</h3>
+        <button onclick="testOutput()">Send Test Data</button>
+        <button onclick="clearOutputs()">Clear Outputs</button>
+        
+        <h3>📥 Input Status</h3>
+        <div id="input-status">No inputs received yet</div>
+        
+        <div class="debug-info" id="input-log">
+            Input log will appear here...
+        </div>
+    </div>
+
+    <!-- Try multiple possible CDN locations for the metaframe library -->
+    <script>
+        let metaframe = null;
+        let debugInfo = "";
+        
+        function updateDebugInfo() {
+            const debugDiv = document.getElementById('debug-info');
+            debugDiv.innerHTML = debugInfo;
+        }
+        
+        function log(message) {
+            console.log(message);
+            debugInfo += new Date().toISOString() + ": " + message + "\n";
+            updateDebugInfo();
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const container = document.getElementById('status-container');
+            container.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        async function loadMetaframeLibrary() {
+            log("Starting metaframe library loading tests...");
+            
+            // Test what's available in the global scope
+            log("Testing global objects:");
+            log("window.Metapage: " + (typeof window.Metapage));
+            log("window.Metaframe: " + (typeof window.Metaframe));
+            log("window.metaframe: " + (typeof window.metaframe));
+            
+            const libraries = [
+                // Try the current version we're using
+                'https://cdn.jsdelivr.net/npm/@metapages/metapage@1.8.3/dist/metapage.umd.js',
+                // Try without specifying dist path
+                'https://cdn.jsdelivr.net/npm/@metapages/metapage@1.8.3',
+                // Try alternative CDN
+                'https://unpkg.com/@metapages/metapage@1.8.3/dist/metapage.umd.js',
+                // Try the old metaframe library
+                'https://cdn.jsdelivr.net/npm/metaframe@0.4.104/dist/metaframe.js',
+                // Try direct metapages.org hosting
+                'https://metapages.org/assets/js/metaframe.js'
+            ];
+            
+            for (const lib of libraries) {
+                try {
+                    log(`Attempting to load: ${lib}`);
+                    await loadScript(lib);
+                    
+                    // Check what's available after loading
+                    log("After loading - window.Metapage: " + (typeof window.Metapage));
+                    log("After loading - window.Metaframe: " + (typeof window.Metaframe));
+                    log("After loading - window.metaframe: " + (typeof window.metaframe));
+                    
+                    // Try different initialization patterns
+                    const patterns = [
+                        () => new window.Metapage.Metaframe(),
+                        () => new window.Metaframe(),
+                        () => new Metaframe(),
+                        () => window.metaframe ? window.metaframe() : null,
+                        () => window.Metapage ? new window.Metapage() : null
+                    ];
+                    
+                    for (let i = 0; i < patterns.length; i++) {
+                        try {
+                            log(`Trying initialization pattern ${i + 1}...`);
+                            metaframe = patterns[i]();
+                            if (metaframe) {
+                                log(`✅ Success with pattern ${i + 1}! Metaframe object created.`);
+                                log("Metaframe object keys: " + Object.keys(metaframe).join(", "));
+                                return true;
+                            }
+                        } catch (e) {
+                            log(`❌ Pattern ${i + 1} failed: ${e.message}`);
+                        }
+                    }
+                    
+                } catch (e) {
+                    log(`❌ Failed to load ${lib}: ${e.message}`);
+                }
+            }
+            
+            return false;
+        }
+        
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        
+        function setupMetaframe() {
+            if (!metaframe) {
+                log("❌ No metaframe object available");
+                return;
+            }
+            
+            try {
+                // Try to set up event handlers
+                if (typeof metaframe.onState === 'function') {
+                    metaframe.onState(function(state) {
+                        log("📊 State received: " + JSON.stringify(state));
+                    });
+                }
+                
+                if (typeof metaframe.onInputs === 'function') {
+                    metaframe.onInputs(function(inputs) {
+                        log("📥 Inputs received: " + JSON.stringify(inputs));
+                        document.getElementById('input-status').innerHTML = 
+                            "✅ Received inputs: " + Object.keys(inputs).join(", ");
+                        document.getElementById('input-log').innerHTML = 
+                            JSON.stringify(inputs, null, 2);
+                    });
+                }
+                
+                updateStatus("✅ Metaframe successfully initialized!", "success");
+                log("✅ Metaframe event handlers set up successfully");
+                
+            } catch (e) {
+                log("❌ Error setting up metaframe: " + e.message);
+                updateStatus("❌ Error setting up metaframe: " + e.message, "error");
+            }
+        }
+        
+        function testOutput() {
+            if (!metaframe) {
+                updateStatus("❌ No metaframe available to send outputs", "error");
+                return;
+            }
+            
+            const testData = {
+                csvData: "year,temperature\n2020,15.0\n2021,15.1\n2022,15.2",
+                metadata: {
+                    name: "Test Climate Data",
+                    timestamp: new Date().toISOString(),
+                    source: "Debug Test"
+                }
+            };
+            
+            try {
+                if (typeof metaframe.setOutputs === 'function') {
+                    metaframe.setOutputs(testData);
+                    log("📤 Test outputs sent: " + JSON.stringify(testData));
+                    updateStatus("✅ Test data sent successfully!", "success");
+                } else if (typeof metaframe.setOutput === 'function') {
+                    metaframe.setOutput("testData", testData);
+                    log("📤 Test output sent via setOutput: " + JSON.stringify(testData));
+                    updateStatus("✅ Test data sent successfully!", "success");
+                } else {
+                    log("❌ No setOutputs or setOutput method available");
+                    updateStatus("❌ No output methods available", "error");
+                }
+            } catch (e) {
+                log("❌ Error sending outputs: " + e.message);
+                updateStatus("❌ Error sending outputs: " + e.message, "error");
+            }
+        }
+        
+        function clearOutputs() {
+            if (!metaframe) return;
+            
+            try {
+                if (typeof metaframe.setOutputs === 'function') {
+                    metaframe.setOutputs({});
+                    log("🗑️ Outputs cleared");
+                }
+            } catch (e) {
+                log("❌ Error clearing outputs: " + e.message);
+            }
+        }
+        
+        // Start the initialization process
+        window.addEventListener('load', async function() {
+            log("🚀 Page loaded, starting metaframe tests...");
+            
+            const success = await loadMetaframeLibrary();
+            
+            if (success) {
+                setupMetaframe();
+            } else {
+                updateStatus("❌ Failed to load any metaframe library", "error");
+                log("❌ All library loading attempts failed");
+            }
+        });
+    </script>
+</body>
+</html>
