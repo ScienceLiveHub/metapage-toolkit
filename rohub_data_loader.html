@@ -535,8 +535,6 @@
         }
         
         function outputToMetapage(content, name, url) {
-            if (!metaframe) return;
-            
             let parsedData = content;
             let dataType = 'text';
             
@@ -554,24 +552,42 @@
                             const values = line.split(',').map(v => v.trim().replace(/^"(.*)"$/, '$1'));
                             const row = {};
                             headers.forEach((header, index) => {
-                                row[header] = values[index];
+                                const value = values[index];
+                                const numValue = parseFloat(value);
+                                row[header] = isNaN(numValue) ? value : numValue;
                             });
                             return row;
                         });
-                        parsedData = { headers, data };
+                        parsedData = data;
                         dataType = 'csv';
                     }
                 }
             }
             
-            // Output to metapage
-            metaframe.setOutput('resourceName', name);
-            metaframe.setOutput('resourceUrl', url);
-            metaframe.setOutput('dataType', dataType);
-            metaframe.setOutput('rawContent', content);
-            metaframe.setOutput('parsedData', parsedData);
+            // Output to metapage using setOutput function
+            setOutput('resourceName', name);
+            setOutput('resourceUrl', url);
+            setOutput('dataType', dataType);
+            setOutput('rawContent', content);
             
-            console.log('Data output to metapage:', dataType, parsedData);
+            // Key outputs for warming stripes visualizer
+            if (dataType === 'csv' && Array.isArray(parsedData)) {
+                // Send parsed CSV data directly to warming stripes
+                setOutput('climateData', parsedData);
+                setOutput('csvData', content);
+                setOutput('parsedData', parsedData);
+                console.log(`Sent ${parsedData.length} CSV records to metapage`);
+            } else if (dataType === 'json' && Array.isArray(parsedData)) {
+                // Send JSON array data to warming stripes
+                setOutput('climateData', parsedData);
+                setOutput('parsedData', parsedData);
+                console.log(`Sent ${parsedData.length} JSON records to metapage`);
+            } else {
+                // Send raw content for manual parsing
+                setOutput('csvData', content);
+                setOutput('rawContent', content);
+                console.log('Sent raw content to metapage for manual parsing');
+            }
         }
         
         function clearAll() {

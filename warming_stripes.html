@@ -399,17 +399,68 @@ year,temperature,location
             // Initialize metaframe
             if (typeof Metaframe !== 'undefined') {
                 metaframe = new Metaframe();
-                
-                // Listen for inputs from ROHub loader
-                metaframe.onInput('rawContent', handleRawContent);
-                metaframe.onInput('parsedData', handleParsedData);
-                metaframe.onInput('resourceData', handleResourceData);
-                
-                console.log('Warming Stripes Visualizer initialized - waiting for data from ROHub loader');
+                console.log('Warming Stripes Visualizer initialized - ready to receive data');
             } else {
                 console.log('Running in standalone mode');
             }
         });
+
+        // Handle inputs from metapage - this is the main entry point
+        const onInputs = (inputs) => {
+            console.log('Warming Stripes received inputs:', JSON.stringify(inputs));
+            
+            // Handle different types of data from ROHub loader
+            if (inputs.climateData && Array.isArray(inputs.climateData)) {
+                parsedData = inputs.climateData;
+                updateColumnOptions();
+                updateDatasetInfo();
+                drawWarmingStripes();
+                showStatus('✅ Received climate data from ROHub loader', 'success');
+            }
+            
+            if (inputs.parsedData && Array.isArray(inputs.parsedData)) {
+                parsedData = inputs.parsedData;
+                updateColumnOptions();
+                updateDatasetInfo();
+                drawWarmingStripes();
+                showStatus('✅ Received parsed data from ROHub loader', 'success');
+            }
+            
+            if (inputs.csvData && typeof inputs.csvData === 'string') {
+                document.getElementById('csvData').value = inputs.csvData;
+                parseCSVData();
+                showStatus('✅ Received CSV data from ROHub loader', 'success');
+            }
+            
+            if (inputs.rawContent && typeof inputs.rawContent === 'string' && 
+                (inputs.rawContent.includes(',') || inputs.rawContent.includes(';'))) {
+                document.getElementById('csvData').value = inputs.rawContent;
+                parseCSVData();
+                showStatus('✅ Received raw content from ROHub loader', 'success');
+            }
+            
+            // Handle control inputs
+            if (inputs.colorScale) {
+                document.getElementById('colorScale').value = inputs.colorScale;
+                updateVisualization();
+            }
+            
+            if (inputs.dateRange) {
+                if (inputs.dateRange.start) document.getElementById('startYear').value = inputs.dateRange.start;
+                if (inputs.dateRange.end) document.getElementById('endYear').value = inputs.dateRange.end;
+                updateVisualization();
+            }
+        };
+        
+        // Set outputs to metapage
+        function setOutput(name, value) {
+            if (metaframe) {
+                metaframe.setOutput(name, value);
+                console.log(`Set output: ${name}`, value);
+            } else {
+                console.log(`Would set output: ${name}`, value);
+            }
+        }
 
         function resizeCanvas() {
             const container = canvas.parentElement;
@@ -421,34 +472,8 @@ year,temperature,location
             }
         }
 
-        // Handle different input formats from ROHub loader
-        function handleRawContent(content) {
-            if (typeof content === 'string' && content.includes(',')) {
-                document.getElementById('csvData').value = content;
-                parseCSVData();
-                showStatus('✅ Received CSV data from ROHub loader', 'success');
-            }
-        }
-
-        function handleParsedData(data) {
-            if (data && (Array.isArray(data) || (data.data && Array.isArray(data.data)))) {
-                if (data.data) {
-                    // CSV format with headers
-                    parsedData = data.data;
-                } else {
-                    // Direct array
-                    parsedData = data;
-                }
-                updateColumnOptions();
-                updateDatasetInfo();
-                drawWarmingStripes();
-                showStatus('✅ Received parsed data from ROHub loader', 'success');
-            }
-        }
-
-        function handleResourceData(data) {
-            handleParsedData(data);
-        }
+        // Remove the old handler functions since we're using onInputs now
+        // (keep the other functions like showStatus, etc.)
 
         function detectSeparator(csvText) {
             const separators = [',', ';', '\t', '|'];
@@ -514,13 +539,11 @@ year,temperature,location
                 showStatus(`✅ Parsed ${data.length} rows with ${headers.length} columns`, 'success');
                 
                 // Output to metapage
-                if (metaframe) {
-                    metaframe.setOutput('parsedCSV', {
-                        headers: headers,
-                        data: data,
-                        rowCount: data.length
-                    });
-                }
+                setOutput('parsedCSV', {
+                    headers: headers,
+                    data: data,
+                    rowCount: data.length
+                });
                 
             } catch (error) {
                 showStatus(`❌ CSV parsing error: ${error.message}`, 'error');
@@ -772,17 +795,17 @@ year,temperature,location
             `;
             
             // Output visualization data to metapage
-            if (metaframe) {
-                metaframe.setOutput('visualizationConfig', {
-                    xColumn,
-                    yColumn,
-                    startYear,
-                    endYear,
-                    colorScale,
-                    dataPoints: filteredData.length,
-                    valueRange: { min: minVal, max: maxVal, avg: avgVal }
-                });
-            }
+            setOutput('visualizationConfig', {
+                xColumn,
+                yColumn,
+                startYear,
+                endYear,
+                colorScale,
+                dataPoints: filteredData.length,
+                valueRange: { min: minVal, max: maxVal, avg: avgVal }
+            });
+            
+            setOutput('stripesData', filteredData);
         }
 
         function handleMouseMove(event) {
@@ -870,24 +893,8 @@ year,temperature,location
             }
         }
 
-        // Handle inputs from metapage (for external control)
-        function onInputs(inputs) {
-            if (inputs.csvData) {
-                document.getElementById('csvData').value = inputs.csvData;
-                parseCSVData();
-            }
-            
-            if (inputs.colorScale) {
-                document.getElementById('colorScale').value = inputs.colorScale;
-                updateVisualization();
-            }
-            
-            if (inputs.dateRange) {
-                if (inputs.dateRange.start) document.getElementById('startYear').value = inputs.dateRange.start;
-                if (inputs.dateRange.end) document.getElementById('endYear').value = inputs.dateRange.end;
-                updateVisualization();
-            }
-        }
+        // Remove the old onInputs function at the bottom since it's now defined above
+        // The main onInputs function is already defined properly above
     </script>
 </body>
 </html>
