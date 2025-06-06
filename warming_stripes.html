@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Warming Stripes Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@metapages/metapage@1.8.3/dist/metapage.umd.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -36,6 +37,24 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        .metaframe-info {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .input-status {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
         }
         
         .data-input {
@@ -206,6 +225,11 @@
             max-height: 150px;
             overflow-y: auto;
         }
+
+        .auto-detect {
+            background: rgba(40, 167, 69, 0.2);
+            border: 2px solid rgba(40, 167, 69, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -214,12 +238,21 @@
             <h1>🌡️ Interactive Warming Stripes</h1>
             <p>Create beautiful climate visualizations from CSV data with customizable colormaps</p>
         </div>
+
+        <div class="metaframe-info">
+            📡 <strong>Metaframe Status:</strong> <span id="metaframeStatus">Initializing...</span><br>
+            🔗 <strong>Input Source:</strong> <span id="inputSource">Waiting for data from ROHub Loader...</span>
+        </div>
+
+        <div id="inputStatus" class="input-status">
+            <strong>📥 Input Status:</strong> <span id="inputStatusText">No data received yet. Connect this metaframe to the ROHub Dataset Loader.</span>
+        </div>
         
         <div class="data-input">
             <h3>📊 Data Input</h3>
             <div class="control-group">
-                <label>CSV Data (paste or load from ROHub):</label>
-                <textarea id="csvData" rows="6" placeholder="Paste your CSV data here, or load from the ROHub Dataset Loader...
+                <label>CSV Data (from ROHub or manual input):</label>
+                <textarea id="csvData" rows="6" placeholder="Data will be automatically loaded from connected ROHub Dataset Loader, or paste your CSV data here...
 
 Example format:
 year,temperature,location
@@ -252,7 +285,8 @@ year,temperature,location
         
         <div id="datasetInfo" class="dataset-info" style="display: none;">
             <strong>📈 Parsed Data:</strong> <span id="datasetStats">None</span><br>
-            <strong>📋 Available Columns:</strong> <span id="availableColumns">None</span>
+            <strong>📋 Available Columns:</strong> <span id="availableColumns">None</span><br>
+            <strong>🔗 Data Source:</strong> <span id="dataSource">Manual input</span>
         </div>
         
         <div class="controls">
@@ -332,7 +366,7 @@ year,temperature,location
         </div>
         
         <div class="info-panel">
-            <div id="statusInfo">Load CSV data to create warming stripes visualization...</div>
+            <div id="statusInfo">Connect to ROHub Dataset Loader or load CSV data to create warming stripes visualization...</div>
         </div>
     </div>
     
@@ -343,6 +377,7 @@ year,temperature,location
         let parsedData = [];
         let canvas, ctx;
         let tooltip;
+        let lastInputMetadata = null;
         
         // Enhanced color scales with more options
         const colorScales = {
@@ -396,12 +431,48 @@ year,temperature,location
             canvas.addEventListener('mouseleave', hideTooltip);
             
             // Initialize metaframe
-            if (typeof Metaframe !== 'undefined') {
-                metaframe = new Metaframe();
-                console.log('Warming Stripes Visualizer initialized - ready to receive data');
-            } else {
-                console.log('Running in standalone mode');
-            }
+            metaframe = new window.Metapage.Metaframe();
+            
+            metaframe.onState(function(state) {
+                console.log('Metaframe state:', state);
+                document.getElementById('metaframeStatus').textContent = 'Connected and ready';
+            });
+
+            // Handle inputs from ROHub Dataset Loader
+            metaframe.onInputs(function(inputs) {
+                console.log('Received inputs from ROHub loader:', inputs);
+                
+                if (inputs.csvData) {
+                    // Mark the data input section as auto-detected
+                    const dataInput = document.querySelector('.data-input');
+                    dataInput.classList.add('auto-detect');
+                    
+                    // Update input status
+                    document.getElementById('inputStatusText').innerHTML = '✅ Data received from ROHub Dataset Loader';
+                    document.getElementById('inputSource').textContent = 'ROHub Dataset Loader (auto-connected)';
+                    
+                    // Load the CSV data
+                    document.getElementById('csvData').value = inputs.csvData;
+                    
+                    // Store metadata if available
+                    if (inputs.metadata) {
+                        lastInputMetadata = inputs.metadata;
+                        document.getElementById('inputSource').textContent = `ROHub: ${inputs.metadata.name}`;
+                    }
+                    
+                    // Auto-parse the data
+                    parseCSVData();
+                    
+                    showStatus('✅ Data automatically loaded from ROHub Dataset Loader!', 'success');
+                } else {
+                    // Remove auto-detect styling if no data
+                    const dataInput = document.querySelector('.data-input');
+                    dataInput.classList.remove('auto-detect');
+                    
+                    document.getElementById('inputStatusText').innerHTML = '⏳ Waiting for data from ROHub Dataset Loader...';
+                    document.getElementById('inputSource').textContent = 'Waiting for connection...';
+                }
+            });
         });
 
         function resizeCanvas() {
@@ -413,9 +484,6 @@ year,temperature,location
                 drawWarmingStripes();
             }
         }
-
-        // Remove the old handler functions since we're using onInputs now
-        // (keep the other functions like showStatus, etc.)
 
         function detectSeparator(csvText) {
             const separators = [',', ';', '\t', '|'];
@@ -440,7 +508,7 @@ year,temperature,location
             const separatorSelect = document.getElementById('separator');
             
             if (!csvText) {
-                showStatus('❌ Please enter CSV data', 'error');
+                showStatus('❌ Please enter CSV data or connect to ROHub Dataset Loader', 'error');
                 return;
             }
             
@@ -543,18 +611,33 @@ year,temperature,location
             if (valueCol) {
                 ySelect.value = valueCol;
             }
+            
+            // If we have good defaults, auto-update the visualization
+            if (yearCol && valueCol) {
+                setTimeout(() => {
+                    updateVisualization();
+                }, 500);
+            }
         }
 
         function updateDatasetInfo() {
             const datasetInfo = document.getElementById('datasetInfo');
             const datasetStats = document.getElementById('datasetStats');
             const availableColumns = document.getElementById('availableColumns');
+            const dataSource = document.getElementById('dataSource');
             
             if (parsedData.length > 0) {
                 const columns = Object.keys(parsedData[0]);
                 
                 datasetStats.textContent = `${parsedData.length} rows, ${columns.length} columns`;
                 availableColumns.textContent = columns.join(', ');
+                
+                if (lastInputMetadata) {
+                    dataSource.innerHTML = `ROHub: <a href="${lastInputMetadata.url}" target="_blank">${lastInputMetadata.name}</a>`;
+                } else {
+                    dataSource.textContent = 'Manual input';
+                }
+                
                 datasetInfo.style.display = 'block';
             }
         }
@@ -584,6 +667,12 @@ year,temperature,location
 2023,15.1,1.1,Global`;
             
             document.getElementById('csvData').value = sampleCSV;
+            lastInputMetadata = null; // Clear metadata for sample data
+            
+            // Remove auto-detect styling
+            const dataInput = document.querySelector('.data-input');
+            dataInput.classList.remove('auto-detect');
+            
             parseCSVData();
         }
 
@@ -651,7 +740,7 @@ year,temperature,location
             const statusInfo = document.getElementById('statusInfo');
             
             if (parsedData.length === 0) {
-                statusInfo.innerHTML = '❌ No data loaded. Please paste CSV data or load from ROHub.';
+                statusInfo.innerHTML = '❌ No data loaded. Please connect to ROHub Dataset Loader or paste CSV data.';
                 return;
             }
             
@@ -721,14 +810,18 @@ year,temperature,location
             });
             
             // Update info
+            let sourceInfo = '';
+            if (lastInputMetadata) {
+                sourceInfo = `<br>🔗 <strong>Source:</strong> <a href="${lastInputMetadata.url}" target="_blank" style="color: #fff;">${lastInputMetadata.name}</a>`;
+            }
+            
             statusInfo.innerHTML = `
                 ✅ <strong>Visualization:</strong> ${filteredData.length} data points<br>
                 📈 <strong>X-Axis:</strong> ${xColumn}<br>
                 📊 <strong>Y-Axis:</strong> ${yColumn} (${minVal.toFixed(2)} to ${maxVal.toFixed(2)})<br>
                 🎨 <strong>Colormap:</strong> ${colorScale}<br>
-                📅 <strong>Range:</strong> ${startYear} - ${endYear}
+                📅 <strong>Range:</strong> ${startYear} - ${endYear}${sourceInfo}
             `;
-            
         }
 
         function handleMouseMove(event) {
@@ -815,9 +908,3 @@ year,temperature,location
                 statusInfo.innerHTML = message;
             }
         }
-
-        // Remove the old onInputs function at the bottom since it's now defined above
-        // The main onInputs function is already defined properly above
-    </script>
-</body>
-</html>

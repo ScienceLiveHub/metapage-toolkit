@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROHub Dataset Loader</title>
+    <script src="https://cdn.jsdelivr.net/npm/@metapages/metapage@1.8.3/dist/metapage.umd.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -189,11 +190,40 @@
             color: #6c757d;
             margin-bottom: 10px;
         }
+
+        .metaframe-info {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #173968;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .output-section {
+            background: #e8f5e8;
+            border: 2px solid #4caf50;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .output-header {
+            font-weight: 600;
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🔬 ROHub Dataset Loader</h1>
+        
+        <div class="metaframe-info">
+            📡 <strong>Metaframe Status:</strong> <span id="metaframeStatus">Initializing...</span><br>
+            🔗 <strong>Connected:</strong> Ready to send data to downstream metaframes
+        </div>
         
         <div class="input-section">
             <div class="input-group">
@@ -228,6 +258,11 @@
             <div class="data-content" id="dataContent">
             </div>
         </div>
+
+        <div id="outputSection" class="output-section">
+            <div class="output-header">📤 Data Output (sent to connected metaframes)</div>
+            <div id="outputSummary"></div>
+        </div>
     </div>
 
     <script>
@@ -237,10 +272,22 @@
         
         // Initialize metaframe
         document.addEventListener('DOMContentLoaded', function() {
-            if (typeof Metaframe !== 'undefined') {
-                metaframe = new Metaframe();
-                console.log('Metaframe initialized');
-            }
+            // Initialize Metaframe client
+            metaframe = new window.Metapage.Metaframe();
+            
+            metaframe.onState(function(state) {
+                console.log('Metaframe state:', state);
+                document.getElementById('metaframeStatus').textContent = 'Connected and ready';
+            });
+
+            // Handle inputs from other metaframes (optional, in case we want to receive ROHub URLs)
+            metaframe.onInputs(function(inputs) {
+                console.log('Received inputs:', inputs);
+                if (inputs.rohubUrl) {
+                    document.getElementById('rohubUrl').value = inputs.rohubUrl;
+                    detectUrlType();
+                }
+            });
             
             // Auto-detect URL type on input
             document.getElementById('rohubUrl').addEventListener('input', detectUrlType);
@@ -295,7 +342,7 @@
                 
                 currentData = content;
                 displayData(content, resourceName, 'Direct resource');
-                outputToMetapage(content, resourceName, resourceUrl);
+                outputToMetaframe(content, resourceName, resourceUrl);
                 
                 showStatus('✅ Resource loaded successfully!', 'success');
                 
@@ -385,7 +432,7 @@
                 
                 currentData = content;
                 displayData(content, resourceName, 'Selected from RO');
-                outputToMetapage(content, resourceName, resourceUrl);
+                outputToMetaframe(content, resourceName, resourceUrl);
                 
                 showStatus('✅ Resource loaded successfully!', 'success');
                 
@@ -534,7 +581,7 @@
             return div.innerHTML;
         }
         
-        function outputToMetapage(content, name, url) {
+        function outputToMetaframe(content, name, url) {
             let parsedData = content;
             let dataType = 'text';
             
@@ -564,16 +611,54 @@
                 }
             }
             
+            // Prepare outputs for metaframe
+            const outputs = {
+                csvData: content,  // Raw CSV content for warming stripes
+                data: parsedData,  // Parsed data
+                metadata: {
+                    name: name,
+                    url: url,
+                    type: dataType,
+                    timestamp: new Date().toISOString(),
+                    rows: Array.isArray(parsedData) ? parsedData.length : 1,
+                    source: 'ROHub'
+                }
+            };
+            
+            // Send outputs to connected metaframes
+            if (metaframe) {
+                metaframe.setOutputs(outputs);
+                console.log('Data sent to metaframe outputs:', outputs);
+                
+                // Show output section
+                const outputSection = document.getElementById('outputSection');
+                const outputSummary = document.getElementById('outputSummary');
+                
+                outputSummary.innerHTML = `
+                    <strong>📊 Data sent:</strong> ${outputs.metadata.name}<br>
+                    <strong>📋 Type:</strong> ${outputs.metadata.type.toUpperCase()}<br>
+                    <strong>📈 Rows:</strong> ${outputs.metadata.rows}<br>
+                    <strong>🕒 Timestamp:</strong> ${new Date(outputs.metadata.timestamp).toLocaleString()}<br>
+                    <strong>🔗 Source URL:</strong> <a href="${outputs.metadata.url}" target="_blank">${outputs.metadata.url}</a>
+                `;
+                
+                outputSection.style.display = 'block';
+            }
         }
         
         function clearAll() {
             document.getElementById('resourceSelector').style.display = 'none';
             document.getElementById('dataViewer').style.display = 'none';
+            document.getElementById('outputSection').style.display = 'none';
             document.getElementById('status').innerHTML = '';
             
             currentData = null;
             currentRO = null;
             
+            // Clear metaframe outputs
+            if (metaframe) {
+                metaframe.setOutputs({});
+            }
         }
         
         function showStatus(message, type) {
