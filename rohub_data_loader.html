@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROHub Dataset Loader</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/4.3.2/iframeResizer.contentWindow.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -191,33 +190,35 @@
             margin-bottom: 10px;
         }
 
-        .metaframe-info {
-            background: #e8f4fd;
-            border: 2px solid #1976d2;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-            font-size: 14px;
-        }
-
-        .send-data-section {
-            background: #f0f8ff;
-            border: 2px solid #007bff;
+        .save-data-section {
+            background: #e8f5e8;
+            border: 2px solid #4caf50;
             border-radius: 12px;
             padding: 20px;
             margin: 20px 0;
             display: none;
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .file-info {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🔬 ROHub Dataset Loader</h1>
-        
-        <div class="metaframe-info">
-            <strong>📡 Metaframe Status:</strong> <span id="metaframeStatus">Initializing...</span><br>
-            <strong>🔗 Connected Tools:</strong> <span id="connectedTools">None</span>
-        </div>
         
         <div class="input-section">
             <div class="input-group">
@@ -245,11 +246,23 @@
             <button onclick="loadSelectedResource()">📥 Load Selected Resource</button>
         </div>
         
-        <div id="sendDataSection" class="send-data-section">
-            <h3>📤 Send Data to Connected Tools</h3>
-            <p>Data loaded successfully! You can now send this data to connected visualization tools.</p>
-            <button onclick="sendDataToMetaframe()">🚀 Send to Warming Stripes Visualizer</button>
-            <button onclick="sendRawDataToMetaframe()">📋 Send Raw CSV Data</button>
+        <div id="saveDataSection" class="save-data-section">
+            <h3>💾 Save Data Locally</h3>
+            <p>Data loaded successfully! Choose how to save this data to your computer:</p>
+            
+            <div class="file-info">
+                <strong>📋 Instructions:</strong><br>
+                • Save as <strong>.rohub</strong> file to use with the Warming Stripes Visualizer<br>
+                • Place saved files in your <code>inputs/</code> folder for easy access<br>
+                • Use CSV or JSON for other applications
+            </div>
+            
+            <div class="buttons-grid">
+                <button onclick="saveAsROHub()">🔬 Save as ROHub File</button>
+                <button onclick="saveAsCSV()">📄 Save as CSV</button>
+                <button onclick="saveAsJSON()">📊 Save as JSON</button>
+                <button onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            </div>
         </div>
         
         <div id="dataViewer" class="data-viewer">
@@ -261,61 +274,20 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@metaframe/core@latest/dist/index.js"></script>
     <script>
-        let metaframe;
+        // Global variables
         let currentData = null;
         let currentRO = null;
         let parsedCSVData = null;
         
-        // Initialize metaframe
+        // Initialize without metaframe
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Initializing ROHub Data Loader...');
-            
-            try {
-                if (typeof Metaframe !== 'undefined') {
-                    metaframe = new Metaframe();
-                    
-                    // Set up metaframe event handlers
-                    metaframe.onInputs((inputs) => {
-                        console.log('📥 Received inputs:', inputs);
-                        handleMetaframeInputs(inputs);
-                    });
-                    
-                    metaframe.onState((state) => {
-                        console.log('📊 State update:', state);
-                    });
-                    
-                    // Send ready signal
-                    metaframe.setOutputs({
-                        status: 'ready',
-                        timestamp: new Date().toISOString()
-                    });
-                    
-                    updateMetaframeStatus('✅ Connected and ready');
-                    console.log('✅ ROHub Data Loader metaframe initialized');
-                } else {
-                    updateMetaframeStatus('⚠️ Running in standalone mode');
-                    console.log('⚠️ Metaframe not available - running standalone');
-                }
-            } catch (error) {
-                console.error('❌ Metaframe initialization error:', error);
-                updateMetaframeStatus('❌ Connection failed');
-            }
+            console.log('🚀 Initializing ROHub Data Loader (Standalone Mode)...');
             
             // Auto-detect URL type on input
             document.getElementById('rohubUrl').addEventListener('input', detectUrlType);
             detectUrlType();
         });
-        
-        function updateMetaframeStatus(status) {
-            document.getElementById('metaframeStatus').textContent = status;
-        }
-        
-        function handleMetaframeInputs(inputs) {
-            console.log('📥 Handling metaframe inputs:', inputs);
-            // Handle any inputs from other metaframes if needed
-        }
         
         function detectUrlType() {
             const url = document.getElementById('rohubUrl').value.trim();
@@ -368,7 +340,7 @@
                 parseAndStoreData(content, resourceName, resourceUrl);
                 
                 showStatus('✅ Resource loaded successfully!', 'success');
-                showSendDataSection();
+                showSaveDataSection();
                 
             } catch (error) {
                 showStatus(`❌ Error loading resource: ${error.message}`, 'error');
@@ -459,7 +431,7 @@
                 parseAndStoreData(content, resourceName, resourceUrl);
                 
                 showStatus('✅ Resource loaded successfully!', 'success');
-                showSendDataSection();
+                showSaveDataSection();
                 
             } catch (error) {
                 showStatus(`❌ Error loading resource: ${error.message}`, 'error');
@@ -467,7 +439,7 @@
         }
         
         function parseAndStoreData(content, name, url) {
-            console.log('🔄 Parsing data for metaframe output...');
+            console.log('🔄 Parsing data for local storage...');
             
             try {
                 // Try to parse as CSV
@@ -533,73 +505,102 @@
             }
         }
         
-        function showSendDataSection() {
-            document.getElementById('sendDataSection').style.display = 'block';
+        function showSaveDataSection() {
+            document.getElementById('saveDataSection').style.display = 'block';
         }
         
-        function sendDataToMetaframe() {
-            if (!metaframe) {
-                showStatus('❌ Metaframe not available', 'error');
-                return;
-            }
-            
+        function saveAsROHub() {
             if (!parsedCSVData) {
-                showStatus('❌ No parsed data available', 'error');
+                showStatus('❌ No data available to save', 'error');
                 return;
             }
             
-            console.log('📤 Sending data to metaframe:', parsedCSVData);
-            
-            try {
-                // Send structured data for visualization
-                const outputData = {
-                    csvData: parsedCSVData.rawContent,
-                    parsedData: parsedCSVData.data || [],
-                    dataType: parsedCSVData.type,
-                    dataName: parsedCSVData.name,
+            const rohubData = {
+                type: 'rohub-dataset',
+                version: '1.0',
+                metadata: {
+                    name: parsedCSVData.name,
                     sourceUrl: parsedCSVData.url,
-                    timestamp: new Date().toISOString(),
-                    headers: parsedCSVData.headers || Object.keys(parsedCSVData.data?.[0] || {})
-                };
-                
-                metaframe.setOutputs(outputData);
-                
-                showStatus('✅ Data sent to connected visualization tools!', 'success');
-                console.log('✅ Data sent successfully via metaframe');
-                
-            } catch (error) {
-                console.error('❌ Error sending data:', error);
-                showStatus(`❌ Error sending data: ${error.message}`, 'error');
-            }
+                    dataType: parsedCSVData.type,
+                    saved: new Date().toISOString(),
+                    rowCount: parsedCSVData.data ? parsedCSVData.data.length : 0,
+                    columnCount: parsedCSVData.headers ? parsedCSVData.headers.length : 0,
+                    columns: parsedCSVData.headers || []
+                },
+                data: {
+                    headers: parsedCSVData.headers || [],
+                    rows: parsedCSVData.data || [],
+                    rawCSV: parsedCSVData.rawContent
+                }
+            };
+            
+            const filename = sanitizeFilename(parsedCSVData.name) + '.rohub';
+            downloadFile(JSON.stringify(rohubData, null, 2), filename, 'application/json');
+            showStatus('✅ ROHub file saved! Place it in your inputs/ folder for the Warming Stripes Visualizer.', 'success');
         }
         
-        function sendRawDataToMetaframe() {
-            if (!metaframe) {
-                showStatus('❌ Metaframe not available', 'error');
+        function saveAsCSV() {
+            if (!parsedCSVData) {
+                showStatus('❌ No data available to save', 'error');
                 return;
             }
             
-            if (!currentData) {
-                showStatus('❌ No data available', 'error');
+            const filename = sanitizeFilename(parsedCSVData.name) + '.csv';
+            downloadFile(parsedCSVData.rawContent, filename, 'text/csv');
+            showStatus('✅ CSV file saved!', 'success');
+        }
+        
+        function saveAsJSON() {
+            if (!parsedCSVData) {
+                showStatus('❌ No data available to save', 'error');
                 return;
             }
             
-            console.log('📤 Sending raw data to metaframe');
+            const jsonData = {
+                metadata: {
+                    name: parsedCSVData.name,
+                    sourceUrl: parsedCSVData.url,
+                    dataType: parsedCSVData.type,
+                    saved: new Date().toISOString()
+                },
+                headers: parsedCSVData.headers || [],
+                data: parsedCSVData.data || []
+            };
             
-            try {
-                metaframe.setOutputs({
-                    rawData: currentData,
-                    dataType: 'raw',
-                    timestamp: new Date().toISOString()
-                });
-                
-                showStatus('✅ Raw data sent to connected tools!', 'success');
-                console.log('✅ Raw data sent successfully');
-                
-            } catch (error) {
-                console.error('❌ Error sending raw data:', error);
-                showStatus(`❌ Error sending raw data: ${error.message}`, 'error');
+            const filename = sanitizeFilename(parsedCSVData.name) + '.json';
+            downloadFile(JSON.stringify(jsonData, null, 2), filename, 'application/json');
+            showStatus('✅ JSON file saved!', 'success');
+        }
+        
+        function copyToClipboard() {
+            if (!parsedCSVData) {
+                showStatus('❌ No data available to copy', 'error');
+                return;
             }
+            
+            navigator.clipboard.writeText(parsedCSVData.rawContent).then(() => {
+                showStatus('✅ Data copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                showStatus('❌ Failed to copy to clipboard', 'error');
+            });
+        }
+        
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        
+        function sanitizeFilename(filename) {
+            // Remove invalid characters and replace spaces
+            return filename.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').toLowerCase();
         }
         
         async function fetchResourceContent(url) {
@@ -745,7 +746,7 @@
         function clearAll() {
             document.getElementById('resourceSelector').style.display = 'none';
             document.getElementById('dataViewer').style.display = 'none';
-            document.getElementById('sendDataSection').style.display = 'none';
+            document.getElementById('saveDataSection').style.display = 'none';
             document.getElementById('status').innerHTML = '';
             
             currentData = null;

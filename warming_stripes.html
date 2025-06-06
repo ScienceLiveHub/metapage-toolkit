@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Warming Stripes Visualizer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/4.3.2/iframeResizer.contentWindow.min.js"></script>
+    <title>Warming Stripes Visualizer</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,6 +11,7 @@
             padding: 20px;
             background: linear-gradient(135deg, #173968 0%, #be2e78 100%);
             min-height: 100vh;
+            color: white;
         }
         
         .container {
@@ -20,7 +20,6 @@
             padding: 25px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
             max-width: 1200px;
             margin: 0 auto;
         }
@@ -39,78 +38,54 @@
             background-clip: text;
         }
         
-        .metaframe-info {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        
-        .data-input {
+        .section {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             padding: 20px;
-            margin-bottom: 25px;
+            margin: 20px 0;
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-            align-items: end;
-        }
-        
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
+        .input-group {
+            margin-bottom: 15px;
         }
         
         label {
-            font-size: 13px;
-            opacity: 0.9;
+            display: block;
+            margin-bottom: 5px;
             font-weight: 600;
+            font-size: 14px;
         }
         
-        select, input, textarea {
-            padding: 10px;
+        input, textarea, select, button {
+            width: 100%;
+            padding: 12px;
             border: none;
             border-radius: 6px;
             background: rgba(255, 255, 255, 0.9);
             color: #333;
             font-size: 14px;
-        }
-        
-        textarea {
-            resize: vertical;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
+            box-sizing: border-box;
         }
         
         button {
             background: linear-gradient(45deg, #be2e78, #173968);
             color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
             font-weight: 600;
+            cursor: pointer;
             transition: transform 0.2s;
-            font-size: 14px;
+            margin: 5px 0;
         }
         
-        button:hover:not(:disabled) {
+        button:hover {
             transform: translateY(-2px);
         }
         
-        button:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            align-items: end;
         }
         
         .canvas-container {
@@ -118,26 +93,23 @@
             border-radius: 10px;
             padding: 20px;
             margin: 20px 0;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            color: #333;
         }
         
-        #stripesCanvas {
+        canvas {
             width: 100%;
             height: 250px;
-            cursor: crosshair;
             border: 2px solid #eee;
             border-radius: 5px;
-            display: block;
+            cursor: crosshair;
         }
         
         .legend {
             display: flex;
             justify-content: center;
-            align-items: center;
             gap: 20px;
             margin: 15px 0;
             font-size: 14px;
-            color: #333;
         }
         
         .legend-item {
@@ -153,18 +125,21 @@
             border: 1px solid #ccc;
         }
         
-        .legend-value {
-            font-weight: 600;
-            font-size: 12px;
+        .status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
         }
         
-        .info-panel {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 15px;
-            font-size: 14px;
-            line-height: 1.5;
+        .status.success {
+            background: rgba(40, 167, 69, 0.3);
+            border: 1px solid rgba(40, 167, 69, 0.5);
+        }
+        
+        .status.error {
+            background: rgba(220, 53, 69, 0.3);
+            border: 1px solid rgba(220, 53, 69, 0.5);
         }
         
         .tooltip {
@@ -172,200 +147,128 @@
             background: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 10px;
-            border-radius: 6px;
+            border-radius: 5px;
             font-size: 12px;
             pointer-events: none;
             z-index: 1000;
             opacity: 0;
             transition: opacity 0.2s;
-            max-width: 200px;
-        }
-        
-        .dataset-info {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .error {
-            background: rgba(220, 53, 69, 0.3);
-            border: 1px solid rgba(220, 53, 69, 0.5);
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        
-        .success {
-            background: rgba(40, 167, 69, 0.3);
-            border: 1px solid rgba(40, 167, 69, 0.5);
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        
-        .data-preview {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 5px;
-            padding: 10px;
-            margin: 10px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            max-height: 150px;
-            overflow-y: auto;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌡️ Interactive Warming Stripes</h1>
-            <p>Create beautiful climate visualizations from CSV data with customizable colormaps</p>
+            <h1>🌡️ Warming Stripes Visualizer</h1>
+            <p>Create beautiful climate visualizations from CSV data</p>
         </div>
         
-        <div class="metaframe-info">
-            <strong>📡 Metaframe Status:</strong> <span id="metaframeStatus">Initializing...</span><br>
-            <strong>🔗 Input Source:</strong> <span id="inputSource">Waiting for data...</span><br>
-            <strong>🔧 Version:</strong> <span id="versionInfo">Metaframe Integration v2.0</span><br>
-            <strong>🆔 Frame Info:</strong> <span id="frameInfo">Loading...</span>
-        </div>
-        
-        <div class="data-input">
-            <h3>📊 Data Input</h3>
-            <div class="control-group">
-                <label>CSV Data (paste manually or receive from ROHub loader):</label>
-                <textarea id="csvData" rows="6" placeholder="Data will automatically appear here when received from the ROHub Dataset Loader, or you can paste your own CSV data...
-
-Example format:
-year,temperature,location
-1880,13.8,Global
-1881,13.9,Global
-1882,13.7,Global"></textarea>
+        <div class="section">
+            <h3>📁 Load Data</h3>
+            <div class="input-group">
+                <label for="fileSelect">Select file from inputs/ folder:</label>
+                <select id="fileSelect">
+                    <option value="">Choose a file...</option>
+                </select>
+                <button onclick="loadSelectedFile()">📂 Load File</button>
             </div>
             
-            <div class="controls" style="margin-top: 15px;">
-                <div class="control-group">
-                    <label>CSV Separator:</label>
-                    <select id="separator">
-                        <option value="auto">Auto-detect</option>
-                        <option value=",">,</option>
-                        <option value=";">;</option>
-                        <option value="\t">Tab</option>
-                        <option value="|">|</option>
+            <div style="text-align: center; margin: 15px 0; opacity: 0.7;">OR</div>
+            
+            <div class="input-group">
+                <label for="csvData">Paste CSV data:</label>
+                <textarea id="csvData" rows="6" placeholder="year,temperature
+1880,13.8
+1881,13.9
+1882,13.7"></textarea>
+            </div>
+            
+            <button onclick="parseData()">📊 Parse Data</button>
+            <button onclick="loadSample()">📋 Load Sample</button>
+        </div>
+        
+        <div class="section">
+            <h3>⚙️ Configuration</h3>
+            <div class="controls">
+                <div class="input-group">
+                    <label for="xColumn">X-Axis (Year):</label>
+                    <select id="xColumn">
+                        <option value="">Select column...</option>
                     </select>
                 </div>
                 
-                <div class="control-group">
-                    <button onclick="parseCSVData()">📋 Parse CSV</button>
+                <div class="input-group">
+                    <label for="yColumn">Y-Axis (Values):</label>
+                    <select id="yColumn">
+                        <option value="">Select column...</option>
+                    </select>
                 </div>
                 
-                <div class="control-group">
-                    <button onclick="loadSampleData()">📊 Load Sample Data</button>
+                <div class="input-group">
+                    <label for="startYear">Start Year:</label>
+                    <input type="number" id="startYear" value="1880">
                 </div>
-            </div>
-        </div>
-        
-        <div id="datasetInfo" class="dataset-info" style="display: none;">
-            <strong>📈 Parsed Data:</strong> <span id="datasetStats">None</span><br>
-            <strong>📋 Available Columns:</strong> <span id="availableColumns">None</span><br>
-            <strong>📍 Data Source:</strong> <span id="dataSource">Manual input</span>
-        </div>
-        
-        <div class="controls">
-            <div class="control-group">
-                <label>X-Axis (Time/Year):</label>
-                <select id="xColumn">
-                    <option value="">Select X column...</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <label>Y-Axis (Values):</label>
-                <select id="yColumn">
-                    <option value="">Select Y column...</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <label>Start Year:</label>
-                <input type="number" id="startYear" value="1880" min="1800" max="2030">
-            </div>
-            
-            <div class="control-group">
-                <label>End Year:</label>
-                <input type="number" id="endYear" value="2023" min="1800" max="2030">
-            </div>
-            
-            <div class="control-group">
-                <label>Colormap:</label>
-                <select id="colorScale">
-                    <option value="classic">Classic (Blue-Red)</option>
-                    <option value="viridis">Viridis</option>
-                    <option value="plasma">Plasma</option>
-                    <option value="coolwarm">Cool-Warm</option>
-                    <option value="rdbu">Red-Blue</option>
-                    <option value="spectral">Spectral</option>
-                    <option value="turbo">Turbo</option>
-                    <option value="inferno">Inferno</option>
-                    <option value="magma">Magma</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <button onclick="updateVisualization()">🔄 Update Stripes</button>
-            </div>
-            
-            <div class="control-group">
-                <button onclick="exportImage()">📸 Export PNG</button>
+                
+                <div class="input-group">
+                    <label for="endYear">End Year:</label>
+                    <input type="number" id="endYear" value="2023">
+                </div>
+                
+                <div class="input-group">
+                    <label for="colormap">Colormap:</label>
+                    <select id="colormap">
+                        <option value="classic">Classic (Blue-Red)</option>
+                        <option value="viridis">Viridis</option>
+                        <option value="plasma">Plasma</option>
+                        <option value="coolwarm">Cool-Warm</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <button onclick="createVisualization()">🎨 Create Stripes</button>
+                </div>
             </div>
         </div>
         
         <div class="canvas-container">
-            <canvas id="stripesCanvas"></canvas>
+            <canvas id="canvas"></canvas>
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-color" id="legendLow"></div>
                     <div>
                         <div>Low</div>
-                        <div class="legend-value" id="legendLowValue">-</div>
+                        <div id="legendLowValue">-</div>
                     </div>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" id="legendMid"></div>
                     <div>
                         <div>Average</div>
-                        <div class="legend-value" id="legendMidValue">-</div>
+                        <div id="legendMidValue">-</div>
                     </div>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" id="legendHigh"></div>
                     <div>
                         <div>High</div>
-                        <div class="legend-value" id="legendHighValue">-</div>
+                        <div id="legendHighValue">-</div>
                     </div>
                 </div>
             </div>
+            <button onclick="exportImage()" style="width: auto; margin-top: 10px;">📸 Export PNG</button>
         </div>
         
-        <div class="info-panel">
-            <div id="statusInfo">Load CSV data to create warming stripes visualization...</div>
-        </div>
+        <div id="status"></div>
     </div>
     
     <div class="tooltip" id="tooltip"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@metaframe/core@latest/dist/index.js"></script>
     <script>
-        let metaframe;
-        let parsedData = [];
-        let canvas, ctx;
-        let tooltip;
-        let receivedFromMetaframe = false;
+        let data = [];
+        let canvas, ctx, tooltip;
         
-        // Enhanced color scales with more options
-        const colorScales = {
+        // Color schemes
+        const colorSchemes = {
             classic: {
                 colors: [[8, 81, 156], [255, 255, 255], [165, 15, 21]],
                 positions: [0, 0.5, 1]
@@ -381,39 +284,12 @@ year,temperature,location
             coolwarm: {
                 colors: [[59, 76, 192], [144, 178, 254], [221, 220, 219], [245, 156, 125], [180, 4, 38]],
                 positions: [0, 0.25, 0.5, 0.75, 1]
-            },
-            rdbu: {
-                colors: [[5, 48, 97], [67, 147, 195], [247, 247, 247], [214, 96, 77], [103, 0, 31]],
-                positions: [0, 0.25, 0.5, 0.75, 1]
-            },
-            spectral: {
-                colors: [[158, 1, 66], [213, 62, 79], [244, 109, 67], [253, 174, 97], [254, 224, 139], [255, 255, 191], [230, 245, 152], [171, 221, 164], [102, 194, 165], [50, 136, 189], [94, 79, 162]],
-                positions: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-            },
-            turbo: {
-                colors: [[48, 18, 59], [80, 2, 148], [182, 54, 121], [251, 135, 97], [254, 206, 84], [239, 254, 240]],
-                positions: [0, 0.2, 0.4, 0.6, 0.8, 1]
-            },
-            inferno: {
-                colors: [[0, 0, 4], [31, 12, 72], [85, 15, 109], [136, 34, 106], [186, 54, 85], [227, 89, 51], [249, 140, 10], [249, 201, 50], [252, 255, 164]],
-                positions: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
-            },
-            magma: {
-                colors: [[0, 0, 4], [28, 16, 68], [79, 18, 123], [129, 37, 129], [181, 54, 122], [229, 80, 100], [251, 135, 97], [254, 194, 135], [252, 253, 191]],
-                positions: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
             }
         };
-
-        window.addEventListener('load', function() {
-            console.log('🚀 Initializing debug warming stripes app...');
-            
-            // Detect frame context
-            const isInFrame = window.parent !== window;
-            document.getElementById('frameInfo').textContent = isInFrame ? 
-                'Inside iframe (has parent)' : 'Standalone mode';
-            console.log(isInFrame ? 'Running inside iframe' : 'Running standalone');
-            
-            canvas = document.getElementById('stripesCanvas');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            canvas = document.getElementById('canvas');
             ctx = canvas.getContext('2d');
             tooltip = document.getElementById('tooltip');
             
@@ -423,238 +299,260 @@ year,temperature,location
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseleave', hideTooltip);
             
-            // Initialize metaframe with debug logging
-            try {
-                console.log('Initializing debug metaframe...');
-                
-                if (typeof Metaframe !== 'undefined') {
-                    metaframe = new Metaframe();
-                    console.log('Debug metaframe initialized');
-                    
-                    // Set up comprehensive input handler with debug logging
-                    metaframe.onInputs((inputs) => {
-                        console.log('📥 Input callback registered (total: 1)');
-                        handleMetaframeInputs(inputs);
-                    });
-                    
-                    metaframe.onState((state) => {
-                        console.log('📊 State callback registered (total: 1)');
-                        console.log('State received:', state);
-                    });
-                    
-                    console.log('✅ Debug app initialization complete');
-                    
-                    // Send ready signals with debug logging
-                    console.log('Sending ready signals...');
-                    
-                    // Signal 1: metaframe_ready
-                    metaframe.setOutputs({
-                        type: 'metaframe_ready',
-                        appName: 'Warming Stripes Visualizer',
-                        version: '2.0',
-                        timestamp: new Date().toISOString(),
-                        capabilities: ['csv', 'json', 'visualization'],
-                        status: 'ready'
-                    });
-                    console.log('Sent message type: metaframe_ready');
-                    console.log('Sent ready signal 1/3');
-                    
-                    // Signal 2: ready
-                    setTimeout(() => {
-                        if (metaframe && metaframe.setOutputs) {
-                            metaframe.setOutputs({
-                                ready: true,
-                                timestamp: new Date().toISOString()
-                            });
-                            console.log('Sent message type: ready');
-                            console.log('Sent ready signal 2/3');
-                        }
-                    }, 100);
-                    
-                    // Signal 3: metaframe_init
-                    setTimeout(() => {
-                        if (metaframe && metaframe.setOutputs) {
-                            metaframe.setOutputs({
-                                type: 'metaframe_init',
-                                initialized: true,
-                                timestamp: new Date().toISOString()
-                            });
-                            console.log('Sent message type: metaframe_init');
-                            console.log('Sent ready signal 3/3');
-                        }
-                    }, 200);
-                    
-                    updateMetaframeStatus('Debug mode ready - monitoring communication');
-                    console.log('📡 **Metaframe Status:** Debug mode ready - monitoring communication');
-                    console.log('🔗 **Input Source:** Waiting for data...');
-                    console.log('🔧 **Version:** Communication Debug Mode');
-                    console.log('🆔 **Frame Info:** ' + (isInFrame ? 'Inside iframe (has parent)' : 'Standalone mode'));
-                    
-                } else {
-                    console.log('⚠️ Metaframe library not available');
-                    updateMetaframeStatus('Metaframe library not found');
-                    updateInputSource('Manual input only');
-                }
-                
-            } catch (error) {
-                console.error('❌ Metaframe initialization error:', error);
-                updateMetaframeStatus('Initialization failed: ' + error.message);
-                updateInputSource('Error - manual input only');
-            }
+            // Load available files from inputs/ folder
+            loadAvailableFiles();
+            
+            showStatus('Ready to load data', '');
         });
-
-        function updateMetaframeStatus(status) {
-            document.getElementById('metaframeStatus').textContent = status;
-        }
         
-        function updateInputSource(source) {
-            document.getElementById('inputSource').textContent = source;
-        }
-        
-        function updateDataSource(source) {
-            document.getElementById('dataSource').textContent = source;
-        }
-
-        function handleMetaframeInputs(inputs) {
-            console.log('🔄 Processing metaframe inputs:', inputs);
+        async function loadAvailableFiles() {
+            const fileSelect = document.getElementById('fileSelect');
             
-            try {
-                // Look for CSV data in various possible input formats
-                let csvData = null;
-                let dataName = 'Metaframe Data';
-                let sourceUrl = null;
-                
-                if (inputs.csvData) {
-                    csvData = inputs.csvData;
-                    console.log('✅ Found csvData field');
-                } else if (inputs.rawData) {
-                    csvData = inputs.rawData;
-                    console.log('✅ Found rawData field');
-                } else if (inputs.data && typeof inputs.data === 'string') {
-                    csvData = inputs.data;
-                    console.log('✅ Found data field (string)');
-                } else if (inputs.content) {
-                    csvData = inputs.content;
-                    console.log('✅ Found content field');
-                }
-                
-                // Extract metadata
-                if (inputs.dataName || inputs.name) {
-                    dataName = inputs.dataName || inputs.name;
-                }
-                
-                if (inputs.sourceUrl || inputs.url) {
-                    sourceUrl = inputs.sourceUrl || inputs.url;
-                }
-                
-                if (csvData) {
-                    console.log('📝 CSV data received, length:', csvData.length);
-                    console.log('📄 Data name:', dataName);
-                    if (sourceUrl) console.log('🔗 Source URL:', sourceUrl);
-                    
-                    // Update UI to show data received
-                    document.getElementById('csvData').value = csvData;
-                    updateInputSource(`ROHub Data Loader (${dataName})`);
-                    updateDataSource(`ROHub: ${dataName}${sourceUrl ? ` (${sourceUrl})` : ''}`);
-                    receivedFromMetaframe = true;
-                    
-                    // Automatically parse the received data
-                    parseCSVData();
-                    
-                    showStatus('✅ Data received from ROHub Data Loader!', 'success');
-                    
-                } else {
-                    console.log('❓ No recognizable CSV data found in inputs');
-                    console.log('Available input keys:', Object.keys(inputs));
-                }
-                
-                // Also check for pre-parsed data
-                if (inputs.parsedData && Array.isArray(inputs.parsedData)) {
-                    console.log('📊 Pre-parsed data received:', inputs.parsedData.length, 'rows');
-                    parsedData = inputs.parsedData;
-                    updateColumnOptions();
-                    updateDatasetInfo();
-                    
-                    // Try to auto-update visualization if we have good data
-                    if (parsedData.length > 0) {
-                        setTimeout(() => {
-                            if (document.getElementById('xColumn').value && document.getElementById('yColumn').value) {
-                                updateVisualization();
-                            }
-                        }, 500);
-                    }
-                }
-                
-            } catch (error) {
-                console.error('❌ Error processing metaframe inputs:', error);
-                showStatus(`❌ Error processing received data: ${error.message}`, 'error');
-            }
-        }
-
-        function resizeCanvas() {
-            const container = canvas.parentElement;
-            const rect = container.getBoundingClientRect();
-            canvas.width = rect.width - 40;
-            canvas.height = 250;
-            if (parsedData.length > 0) {
-                drawWarmingStripes();
-            }
-        }
-
-        function detectSeparator(csvText) {
-            const separators = [',', ';', '\t', '|'];
-            const firstLine = csvText.split('\n')[0];
+            // List of files that should be in the inputs/ folder
+            const expectedFiles = [
+                'global_temperature.csv',
+                'climate_data.rohub',
+                'temperature_anomalies.csv',
+                'sample_data.json',
+                'warming_data.csv'
+            ];
             
-            let bestSep = ',';
-            let maxCount = 0;
+            // Clear existing options
+            fileSelect.innerHTML = '<option value="">Choose a file...</option>';
             
-            separators.forEach(sep => {
-                const count = (firstLine.match(new RegExp(`\\${sep}`, 'g')) || []).length;
-                if (count > maxCount) {
-                    maxCount = count;
-                    bestSep = sep;
-                }
+            // Add expected files to dropdown
+            expectedFiles.forEach(filename => {
+                const option = document.createElement('option');
+                option.value = `inputs/${filename}`;
+                option.textContent = filename;
+                fileSelect.appendChild(option);
             });
             
-            return bestSep;
-        }
-
-        function parseCSVData() {
-            const csvText = document.getElementById('csvData').value.trim();
-            const separatorSelect = document.getElementById('separator');
+            // Try to detect what files actually exist by attempting to fetch them
+            showStatus('Scanning inputs/ folder for available files...', '');
             
+            for (const filename of expectedFiles) {
+                try {
+                    const response = await fetch(`inputs/${filename}`, { method: 'HEAD' });
+                    if (response.ok) {
+                        // File exists - mark it as available
+                        const option = fileSelect.querySelector(`option[value="inputs/${filename}"]`);
+                        if (option) {
+                            option.textContent = `✅ ${filename}`;
+                            option.style.color = '#28a745';
+                        }
+                    } else {
+                        // File doesn't exist - mark as unavailable
+                        const option = fileSelect.querySelector(`option[value="inputs/${filename}"]`);
+                        if (option) {
+                            option.textContent = `❌ ${filename} (not found)`;
+                            option.style.color = '#dc3545';
+                            option.disabled = true;
+                        }
+                    }
+                } catch (error) {
+                    // File doesn't exist or network error
+                    const option = fileSelect.querySelector(`option[value="inputs/${filename}"]`);
+                    if (option) {
+                        option.textContent = `❌ ${filename} (not found)`;
+                        option.style.color = '#dc3545';
+                        option.disabled = true;
+                    }
+                }
+            }
+            
+            showStatus('File scan complete. Select a file to load.', '');
+        }
+        
+        async function loadSelectedFile() {
+            const fileSelect = document.getElementById('fileSelect');
+            const selectedFile = fileSelect.value;
+            
+            if (!selectedFile) {
+                showStatus('Please select a file first', 'error');
+                return;
+            }
+            
+            showStatus('Loading file...', '');
+            
+            try {
+                const response = await fetch(selectedFile);
+                if (!response.ok) {
+                    throw new Error(`File not found: ${selectedFile}`);
+                }
+                
+                const content = await response.text();
+                const filename = selectedFile.split('/').pop();
+                const extension = filename.split('.').pop().toLowerCase();
+                
+                console.log(`📁 Loading file: ${filename} (${extension})`);
+                
+                if (extension === 'rohub') {
+                    await handleRohubFile(content, filename);
+                } else if (extension === 'json') {
+                    await handleJsonFile(content, filename);
+                } else if (extension === 'csv' || extension === 'txt') {
+                    await handleCsvFile(content, filename);
+                } else {
+                    throw new Error(`Unsupported file type: ${extension}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ File loading error:', error);
+                showStatus(`Error loading file: ${error.message}`, 'error');
+            }
+        }
+        
+        async function handleRohubFile(content, filename) {
+            try {
+                const rohubData = JSON.parse(content);
+                
+                if (rohubData.type !== 'rohub-dataset' || !rohubData.data) {
+                    throw new Error('Invalid ROHub data file format');
+                }
+                
+                console.log('✅ Valid ROHub data file detected');
+                console.log('📊 Metadata:', rohubData.metadata);
+                
+                let csvData = rohubData.data.rawCSV;
+                if (!csvData && rohubData.data.headers && rohubData.data.rows) {
+                    csvData = rohubData.data.headers.join(',') + '\n';
+                    csvData += rohubData.data.rows.map(row => 
+                        rohubData.data.headers.map(header => row[header] || '').join(',')
+                    ).join('\n');
+                }
+                
+                if (!csvData) {
+                    throw new Error('No CSV data found in ROHub file');
+                }
+                
+                document.getElementById('csvData').value = csvData;
+                parseData();
+                showStatus(`✅ ROHub data file loaded: ${rohubData.metadata.name}`, 'success');
+                
+            } catch (error) {
+                throw new Error(`ROHub file parsing failed: ${error.message}`);
+            }
+        }
+        
+        async function handleJsonFile(content, filename) {
+            try {
+                const jsonData = JSON.parse(content);
+                
+                let data;
+                if (jsonData.data && Array.isArray(jsonData.data)) {
+                    data = jsonData.data;
+                } else if (Array.isArray(jsonData)) {
+                    data = jsonData;
+                } else {
+                    throw new Error('JSON format not recognized as tabular data');
+                }
+                
+                if (data.length > 0 && typeof data[0] === 'object') {
+                    const headers = Object.keys(data[0]);
+                    let csvData = headers.join(',') + '\n';
+                    csvData += data.map(row => 
+                        headers.map(header => row[header] || '').join(',')
+                    ).join('\n');
+                    
+                    document.getElementById('csvData').value = csvData;
+                    parseData();
+                    showStatus(`✅ JSON file loaded and converted to CSV (${data.length} rows)`, 'success');
+                } else {
+                    throw new Error('JSON file contains no valid tabular data');
+                }
+                
+            } catch (error) {
+                throw new Error(`JSON file parsing failed: ${error.message}`);
+            }
+        }
+        
+        async function handleCsvFile(content, filename) {
+            try {
+                document.getElementById('csvData').value = content;
+                parseData();
+                
+                const lineCount = content.split('\n').filter(line => line.trim()).length;
+                showStatus(`✅ CSV file loaded successfully (~${lineCount-1} data rows)`, 'success');
+                
+            } catch (error) {
+                throw new Error(`CSV file processing failed: ${error.message}`);
+            }
+        }
+        
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth - 40;
+            canvas.height = 250;
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => statusDiv.innerHTML = '', 3000);
+            }
+        }
+        
+        function loadSample() {
+            const sampleData = `year,temperature,anomaly
+1880,13.8,-0.2
+1885,13.5,-0.5
+1890,13.3,-0.7
+1895,13.6,-0.4
+1900,13.9,-0.1
+1905,13.7,-0.3
+1910,13.6,-0.4
+1915,13.5,-0.5
+1920,13.8,-0.2
+1925,13.9,-0.1
+1930,14.0,0.0
+1935,13.9,-0.1
+1940,14.1,0.1
+1945,14.0,0.0
+1950,13.9,-0.1
+1955,14.0,0.0
+1960,14.0,0.0
+1965,14.1,0.1
+1970,14.1,0.1
+1975,14.2,0.2
+1980,14.3,0.3
+1985,14.4,0.4
+1990,14.4,0.4
+1995,14.5,0.5
+2000,14.6,0.6
+2005,14.7,0.7
+2010,14.7,0.7
+2015,14.9,0.9
+2020,15.0,1.0
+2023,15.1,1.1`;
+            
+            document.getElementById('csvData').value = sampleData;
+            parseData();
+        }
+        
+        function parseData() {
+            const csvText = document.getElementById('csvData').value.trim();
             if (!csvText) {
-                showStatus('❌ Please enter CSV data', 'error');
+                showStatus('Please enter CSV data', 'error');
                 return;
             }
             
             try {
-                let separator = separatorSelect.value;
-                if (separator === 'auto') {
-                    separator = detectSeparator(csvText);
-                    if (receivedFromMetaframe) {
-                        console.log(`🔍 Auto-detected separator: "${separator}"`);
-                    } else {
-                        showStatus(`🔍 Auto-detected separator: "${separator}"`, 'success');
-                    }
-                }
-                
-                if (separator === '\\t') separator = '\t';
-                
                 const lines = csvText.split('\n').filter(line => line.trim());
                 if (lines.length < 2) {
-                    throw new Error('CSV must have at least 2 lines (header + data)');
+                    throw new Error('Need at least header and one data row');
                 }
                 
-                const headers = lines[0].split(separator).map(h => h.trim().replace(/^["']|["']$/g, ''));
-                const data = [];
+                const headers = lines[0].split(',').map(h => h.trim());
+                data = [];
                 
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(separator).map(v => v.trim().replace(/^["']|["']$/g, ''));
+                    const values = lines[i].split(',').map(v => v.trim());
                     if (values.length === headers.length) {
                         const row = {};
                         headers.forEach((header, index) => {
-                            // Try to parse as number
                             const value = values[index];
                             const numValue = parseFloat(value);
                             row[header] = isNaN(numValue) ? value : numValue;
@@ -663,74 +561,40 @@ year,temperature,location
                     }
                 }
                 
-                parsedData = data;
-                updateColumnOptions();
-                updateDatasetInfo();
-                
-                const successMessage = `✅ Parsed ${data.length} rows with ${headers.length} columns`;
-                console.log(successMessage);
-                
-                if (!receivedFromMetaframe) {
-                    showStatus(successMessage, 'success');
-                }
-                
-                // Auto-update visualization if columns are selected
-                setTimeout(() => {
-                    if (document.getElementById('xColumn').value && document.getElementById('yColumn').value) {
-                        updateVisualization();
-                    }
-                }, 100);
+                updateColumnOptions(headers);
+                showStatus(`Parsed ${data.length} rows with ${headers.length} columns`, 'success');
                 
             } catch (error) {
-                const errorMsg = `❌ CSV parsing error: ${error.message}`;
-                console.error(errorMsg);
-                showStatus(errorMsg, 'error');
+                showStatus(`Parse error: ${error.message}`, 'error');
             }
         }
-
-        function updateColumnOptions() {
-            if (parsedData.length === 0) return;
-            
-            const columns = Object.keys(parsedData[0]);
+        
+        function updateColumnOptions(headers) {
             const xSelect = document.getElementById('xColumn');
             const ySelect = document.getElementById('yColumn');
             
-            // Clear options
-            xSelect.innerHTML = '<option value="">Select X column...</option>';
-            ySelect.innerHTML = '<option value="">Select Y column...</option>';
+            xSelect.innerHTML = '<option value="">Select column...</option>';
+            ySelect.innerHTML = '<option value="">Select column...</option>';
             
-            columns.forEach(col => {
-                const xOption = document.createElement('option');
-                xOption.value = col;
-                xOption.textContent = col;
-                xSelect.appendChild(xOption);
-                
-                const yOption = document.createElement('option');
-                yOption.value = col;
-                yOption.textContent = col;
-                ySelect.appendChild(yOption);
+            headers.forEach(header => {
+                const xOption = new Option(header, header);
+                const yOption = new Option(header, header);
+                xSelect.add(xOption);
+                ySelect.add(yOption);
             });
             
-            // Auto-select reasonable defaults
-            const yearCol = columns.find(c => 
-                c.toLowerCase().includes('year') || 
-                c.toLowerCase().includes('time') ||
-                c.toLowerCase().includes('date') ||
-                (parsedData[0][c] && String(parsedData[0][c]).match(/\d{4}/))
-            );
-            
-            const valueCol = columns.find(c => 
-                c.toLowerCase().includes('temp') || 
-                c.toLowerCase().includes('anomal') ||
-                c.toLowerCase().includes('avg') ||
-                c.toLowerCase().includes('value') ||
-                (typeof parsedData[0][c] === 'number' && c !== yearCol)
+            // Auto-select year column
+            const yearCol = headers.find(h => 
+                h.toLowerCase().includes('year') || 
+                h.toLowerCase().includes('time') ||
+                (data[0] && data[0][h] && String(data[0][h]).match(/\d{4}/))
             );
             
             if (yearCol) {
                 xSelect.value = yearCol;
+                
                 // Auto-detect year range
-                const years = parsedData.map(d => {
+                const years = data.map(d => {
                     const val = d[yearCol];
                     if (typeof val === 'number') return val;
                     const match = String(val).match(/(\d{4})/);
@@ -743,284 +607,142 @@ year,temperature,location
                 }
             }
             
-            if (valueCol) {
-                ySelect.value = valueCol;
-            }
+            // Auto-select temperature column
+            const tempCol = headers.find(h => 
+                h.toLowerCase().includes('temp') || 
+                h.toLowerCase().includes('anomal') ||
+                (typeof data[0][h] === 'number' && h !== yearCol)
+            );
             
-            console.log('🔧 Auto-selected columns:', { x: yearCol, y: valueCol });
-        }
-
-        function updateDatasetInfo() {
-            const datasetInfo = document.getElementById('datasetInfo');
-            const datasetStats = document.getElementById('datasetStats');
-            const availableColumns = document.getElementById('availableColumns');
-            
-            if (parsedData.length > 0) {
-                const columns = Object.keys(parsedData[0]);
-                
-                datasetStats.textContent = `${parsedData.length} rows, ${columns.length} columns`;
-                availableColumns.textContent = columns.join(', ');
-                datasetInfo.style.display = 'block';
+            if (tempCol) {
+                ySelect.value = tempCol;
             }
         }
-
-        function loadSampleData() {
-            const sampleCSV = `year,temperature,anomaly,region
-1880,13.8,-0.2,Global
-1881,13.9,-0.1,Global
-1882,13.7,-0.3,Global
-1883,13.6,-0.4,Global
-1884,13.4,-0.6,Global
-1885,13.5,-0.5,Global
-1890,13.3,-0.7,Global
-1900,13.9,-0.1,Global
-1910,13.6,-0.4,Global
-1920,13.8,-0.2,Global
-1930,14.0,0.0,Global
-1940,14.1,0.1,Global
-1950,13.9,-0.1,Global
-1960,14.0,0.0,Global
-1970,14.1,0.1,Global
-1980,14.3,0.3,Global
-1990,14.4,0.4,Global
-2000,14.6,0.6,Global
-2010,14.7,0.7,Global
-2020,15.0,1.0,Global
-2023,15.1,1.1,Global`;
-            
-            document.getElementById('csvData').value = sampleCSV;
-            updateInputSource('Sample data loaded');
-            updateDataSource('Built-in sample dataset');
-            receivedFromMetaframe = false;
-            parseCSVData();
-        }
-
-        function getColorFromScale(value, scaleName) {
-            const scale = colorScales[scaleName];
-            const colors = scale.colors;
-            const positions = scale.positions;
-            
-            // Clamp value between 0 and 1
-            value = Math.max(0, Math.min(1, value));
-            
-            // Find the two colors to interpolate between
-            let i = 0;
-            while (i < positions.length - 1 && value > positions[i + 1]) {
-                i++;
-            }
-            
-            if (i === positions.length - 1) {
-                return colors[i];
-            }
-            
-            // Interpolate between colors[i] and colors[i+1]
-            const t = (value - positions[i]) / (positions[i + 1] - positions[i]);
-            const color1 = colors[i];
-            const color2 = colors[i + 1];
-            
-            return [
-                Math.round(color1[0] + (color2[0] - color1[0]) * t),
-                Math.round(color1[1] + (color2[1] - color1[1]) * t),
-                Math.round(color1[2] + (color2[2] - color1[2]) * t)
-            ];
-        }
-
-        function updateLegend(scaleName, minVal, maxVal, avgVal) {
-            const legendLow = document.getElementById('legendLow');
-            const legendMid = document.getElementById('legendMid');
-            const legendHigh = document.getElementById('legendHigh');
-            const legendLowValue = document.getElementById('legendLowValue');
-            const legendMidValue = document.getElementById('legendMidValue');
-            const legendHighValue = document.getElementById('legendHighValue');
-            
-            const lowColor = getColorFromScale(0, scaleName);
-            const midColor = getColorFromScale(0.5, scaleName);
-            const highColor = getColorFromScale(1, scaleName);
-            
-            legendLow.style.background = `rgb(${lowColor.join(',')})`;
-            legendMid.style.background = `rgb(${midColor.join(',')})`;
-            legendHigh.style.background = `rgb(${highColor.join(',')})`;
-            
-            legendLowValue.textContent = minVal.toFixed(2);
-            legendMidValue.textContent = avgVal.toFixed(2);
-            legendHighValue.textContent = maxVal.toFixed(2);
-        }
-
-        function updateVisualization() {
-            drawWarmingStripes();
-        }
-
-        function drawWarmingStripes() {
-            const xColumn = document.getElementById('xColumn').value;
-            const yColumn = document.getElementById('yColumn').value;
+        
+        function createVisualization() {
+            const xCol = document.getElementById('xColumn').value;
+            const yCol = document.getElementById('yColumn').value;
             const startYear = parseInt(document.getElementById('startYear').value);
             const endYear = parseInt(document.getElementById('endYear').value);
-            const colorScale = document.getElementById('colorScale').value;
-            const statusInfo = document.getElementById('statusInfo');
+            const colormap = document.getElementById('colormap').value;
             
-            if (parsedData.length === 0) {
-                statusInfo.innerHTML = '❌ No data loaded. Please paste CSV data or load from ROHub.';
+            if (!xCol || !yCol) {
+                showStatus('Please select both X and Y columns', 'error');
                 return;
             }
             
-            if (!xColumn || !yColumn) {
-                statusInfo.innerHTML = '❌ Please select both X and Y columns to create warming stripes.';
+            if (data.length === 0) {
+                showStatus('No data loaded', 'error');
                 return;
             }
             
-            // Filter and sort data
-            let filteredData = parsedData.filter(d => {
-                const xVal = d[xColumn];
-                const yVal = d[yColumn];
+            // Filter data
+            let filteredData = data.filter(d => {
+                const xVal = d[xCol];
+                const yVal = d[yCol];
                 
                 if (typeof yVal !== 'number' || isNaN(yVal)) return false;
                 
-                if (xColumn.toLowerCase().includes('year') || typeof xVal === 'string') {
-                    const year = typeof xVal === 'number' ? xVal : parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
-                    return year >= startYear && year <= endYear && !isNaN(year);
-                }
-                return true;
+                const year = typeof xVal === 'number' ? xVal : parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
+                return year >= startYear && year <= endYear && !isNaN(year);
             });
             
-            // Sort by X column
+            // Sort by year
             filteredData.sort((a, b) => {
-                let aVal = a[xColumn];
-                let bVal = b[xColumn];
+                let aVal = a[xCol];
+                let bVal = b[xCol];
                 
-                if (typeof aVal === 'string' && aVal.match(/\d{4}/)) {
-                    aVal = parseInt(aVal.match(/(\d{4})/)[1]);
-                }
-                if (typeof bVal === 'string' && bVal.match(/\d{4}/)) {
-                    bVal = parseInt(bVal.match(/(\d{4})/)[1]);
-                }
+                if (typeof aVal === 'string') aVal = parseInt(aVal.match(/(\d{4})/)?.[1] || aVal);
+                if (typeof bVal === 'string') bVal = parseInt(bVal.match(/(\d{4})/)?.[1] || bVal);
                 
                 return aVal - bVal;
             });
             
             if (filteredData.length === 0) {
-                statusInfo.innerHTML = '❌ No data in selected range.';
+                showStatus('No data in selected range', 'error');
                 return;
             }
             
-            // Clear canvas
+            // Draw stripes
+            drawStripes(filteredData, xCol, yCol, colormap);
+            showStatus(`Created stripes for ${filteredData.length} data points`, 'success');
+        }
+        
+        function drawStripes(filteredData, xCol, yCol, colormap) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Get Y values for normalization
-            const yValues = filteredData.map(d => d[yColumn]);
-            const minVal = Math.min(...yValues);
-            const maxVal = Math.max(...yValues);
-            const avgVal = yValues.reduce((a, b) => a + b, 0) / yValues.length;
+            const values = filteredData.map(d => d[yCol]);
+            const minVal = Math.min(...values);
+            const maxVal = Math.max(...values);
+            const avgVal = values.reduce((a, b) => a + b, 0) / values.length;
             
             // Update legend
-            updateLegend(colorScale, minVal, maxVal, avgVal);
+            updateLegend(colormap, minVal, maxVal, avgVal);
             
-            // Draw stripes
             const stripeWidth = canvas.width / filteredData.length;
             
-            filteredData.forEach((dataPoint, index) => {
-                const yVal = dataPoint[yColumn];
+            filteredData.forEach((point, index) => {
+                const value = point[yCol];
+                const normalized = (value - minVal) / (maxVal - minVal);
+                const color = getColor(normalized, colormap);
                 
-                // Normalize to 0-1 range
-                const normalized = (yVal - minVal) / (maxVal - minVal);
-                
-                const color = getColorFromScale(normalized, colorScale);
                 ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
                 ctx.fillRect(index * stripeWidth, 0, stripeWidth, canvas.height);
             });
-            
-            // Update info
-            statusInfo.innerHTML = `
-                ✅ <strong>Visualization:</strong> ${filteredData.length} data points<br>
-                📈 <strong>X-Axis:</strong> ${xColumn}<br>
-                📊 <strong>Y-Axis:</strong> ${yColumn} (${minVal.toFixed(2)} to ${maxVal.toFixed(2)})<br>
-                🎨 <strong>Colormap:</strong> ${colorScale}<br>
-                📅 <strong>Range:</strong> ${startYear} - ${endYear}
-            `;
         }
-
-        function handleMouseMove(event) {
-            const xColumn = document.getElementById('xColumn').value;
-            const yColumn = document.getElementById('yColumn').value;
+        
+        function getColor(value, scheme) {
+            const colors = colorSchemes[scheme].colors;
+            const positions = colorSchemes[scheme].positions;
             
-            if (!xColumn || !yColumn || parsedData.length === 0) return;
+            value = Math.max(0, Math.min(1, value));
             
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            
-            const startYear = parseInt(document.getElementById('startYear').value);
-            const endYear = parseInt(document.getElementById('endYear').value);
-            
-            let filteredData = parsedData.filter(d => {
-                const xVal = d[xColumn];
-                const yVal = d[yColumn];
-                
-                if (typeof yVal !== 'number' || isNaN(yVal)) return false;
-                
-                if (xColumn.toLowerCase().includes('year') || typeof xVal === 'string') {
-                    const year = typeof xVal === 'number' ? xVal : parseInt(String(xVal).match(/(\d{4})/)?.[1] || xVal);
-                    return year >= startYear && year <= endYear && !isNaN(year);
-                }
-                return true;
-            });
-            
-            const stripeWidth = canvas.width / filteredData.length;
-            const index = Math.floor(x / stripeWidth);
-            
-            if (index >= 0 && index < filteredData.length) {
-                const dataPoint = filteredData[index];
-                showTooltip(event.clientX, event.clientY, dataPoint, xColumn, yColumn);
+            let i = 0;
+            while (i < positions.length - 1 && value > positions[i + 1]) {
+                i++;
             }
-        }
-
-        function showTooltip(x, y, dataPoint, xCol, yCol) {
-            const allColumns = Object.keys(dataPoint);
-            let tooltipContent = `<strong>${xCol}:</strong> ${dataPoint[xCol]}<br>`;
-            tooltipContent += `<strong>${yCol}:</strong> ${dataPoint[yCol]}<br>`;
             
-            // Show other relevant columns
-            allColumns.forEach(col => {
-                if (col !== xCol && col !== yCol && dataPoint[col] !== undefined) {
-                    tooltipContent += `<strong>${col}:</strong> ${dataPoint[col]}<br>`;
-                }
-            });
+            if (i === positions.length - 1) return colors[i];
             
-            tooltip.innerHTML = tooltipContent;
-            tooltip.style.left = Math.min(x + 10, window.innerWidth - 220) + 'px';
-            tooltip.style.top = y - 10 + 'px';
-            tooltip.style.opacity = '1';
+            const t = (value - positions[i]) / (positions[i + 1] - positions[i]);
+            const c1 = colors[i];
+            const c2 = colors[i + 1];
+            
+            return [
+                Math.round(c1[0] + (c2[0] - c1[0]) * t),
+                Math.round(c1[1] + (c2[1] - c1[1]) * t),
+                Math.round(c1[2] + (c2[2] - c1[2]) * t)
+            ];
         }
-
+        
+        function updateLegend(scheme, minVal, maxVal, avgVal) {
+            const low = getColor(0, scheme);
+            const mid = getColor(0.5, scheme);
+            const high = getColor(1, scheme);
+            
+            document.getElementById('legendLow').style.background = `rgb(${low.join(',')})`;
+            document.getElementById('legendMid').style.background = `rgb(${mid.join(',')})`;
+            document.getElementById('legendHigh').style.background = `rgb(${high.join(',')})`;
+            
+            document.getElementById('legendLowValue').textContent = minVal.toFixed(2);
+            document.getElementById('legendMidValue').textContent = avgVal.toFixed(2);
+            document.getElementById('legendHighValue').textContent = maxVal.toFixed(2);
+        }
+        
+        function handleMouseMove(event) {
+            // Tooltip functionality would go here
+        }
+        
         function hideTooltip() {
             tooltip.style.opacity = '0';
         }
-
+        
         function exportImage() {
             const link = document.createElement('a');
             link.download = 'warming-stripes.png';
             link.href = canvas.toDataURL();
             link.click();
-            
-            showStatus('✅ Image exported successfully!', 'success');
-        }
-
-        function showStatus(message, type) {
-            const statusInfo = document.getElementById('statusInfo');
-            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
-            
-            if (className) {
-                const div = document.createElement('div');
-                div.className = className;
-                div.innerHTML = message;
-                document.querySelector('.info-panel').appendChild(div);
-                
-                setTimeout(() => {
-                    if (div.parentNode) {
-                        div.parentNode.removeChild(div);
-                    }
-                }, 3000);
-            } else {
-                statusInfo.innerHTML = message;
-            }
+            showStatus('Image exported!', 'success');
         }
     </script>
 </body>
