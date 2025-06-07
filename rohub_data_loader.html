@@ -252,15 +252,12 @@
             
             <div class="file-info">
                 <strong>📋 Instructions:</strong><br>
-                • Save as <strong>.rohub</strong> file to use with the Warming Stripes Visualizer<br>
+                • Save as <strong>file</strong> to use with the Warming Stripes Visualizer<br>
                 • Place saved files in your <code>inputs/</code> folder for easy access<br>
-                • Use CSV or JSON for other applications
             </div>
             
             <div class="buttons-grid">
-                <button onclick="saveAsROHub()">🔬 Save as ROHub File</button>
-                <button onclick="saveAsCSV()">📄 Save as CSV</button>
-                <button onclick="saveAsJSON()">📊 Save as JSON</button>
+                <button onclick="saveAsCSV()">📄 Save File</button>
                 <button onclick="copyToClipboard()">📋 Copy to Clipboard</button>
             </div>
         </div>
@@ -509,36 +506,6 @@
             document.getElementById('saveDataSection').style.display = 'block';
         }
         
-        function saveAsROHub() {
-            if (!parsedCSVData) {
-                showStatus('❌ No data available to save', 'error');
-                return;
-            }
-            
-            const rohubData = {
-                type: 'rohub-dataset',
-                version: '1.0',
-                metadata: {
-                    name: parsedCSVData.name,
-                    sourceUrl: parsedCSVData.url,
-                    dataType: parsedCSVData.type,
-                    saved: new Date().toISOString(),
-                    rowCount: parsedCSVData.data ? parsedCSVData.data.length : 0,
-                    columnCount: parsedCSVData.headers ? parsedCSVData.headers.length : 0,
-                    columns: parsedCSVData.headers || []
-                },
-                data: {
-                    headers: parsedCSVData.headers || [],
-                    rows: parsedCSVData.data || [],
-                    rawCSV: parsedCSVData.rawContent
-                }
-            };
-            
-            const filename = sanitizeFilename(parsedCSVData.name) + '.rohub';
-            downloadFile(JSON.stringify(rohubData, null, 2), filename, 'application/json');
-            showStatus('✅ ROHub file saved! Place it in your inputs/ folder for the Warming Stripes Visualizer.', 'success');
-        }
-        
         function saveAsCSV() {
             if (!parsedCSVData) {
                 showStatus('❌ No data available to save', 'error');
@@ -547,29 +514,7 @@
             
             const filename = sanitizeFilename(parsedCSVData.name) + '.csv';
             downloadFile(parsedCSVData.rawContent, filename, 'text/csv');
-            showStatus('✅ CSV file saved!', 'success');
-        }
-        
-        function saveAsJSON() {
-            if (!parsedCSVData) {
-                showStatus('❌ No data available to save', 'error');
-                return;
-            }
-            
-            const jsonData = {
-                metadata: {
-                    name: parsedCSVData.name,
-                    sourceUrl: parsedCSVData.url,
-                    dataType: parsedCSVData.type,
-                    saved: new Date().toISOString()
-                },
-                headers: parsedCSVData.headers || [],
-                data: parsedCSVData.data || []
-            };
-            
-            const filename = sanitizeFilename(parsedCSVData.name) + '.json';
-            downloadFile(JSON.stringify(jsonData, null, 2), filename, 'application/json');
-            showStatus('✅ JSON file saved!', 'success');
+            showStatus('✅ File saved!', 'success');
         }
         
         function copyToClipboard() {

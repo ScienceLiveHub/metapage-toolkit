@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warming Stripes Visualizer</title>
+    <title>Stripes Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -146,30 +147,30 @@
             position: absolute;
             background: rgba(0, 0, 0, 0.9);
             color: white;
-            padding: 10px;
+            padding: 8px 12px;
             border-radius: 5px;
             font-size: 12px;
             pointer-events: none;
             z-index: 1000;
             opacity: 0;
             transition: opacity 0.2s;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌡️ Warming Stripes Visualizer</h1>
-            <p>Create beautiful climate visualizations from CSV data</p>
+            <h1>🌡️ Stripes Visualizer</h1>
+            <p>Create interactive visualizations from CSV data</p>
         </div>
         
         <div class="section">
             <h3>📁 Load Data</h3>
             <div class="input-group">
-                <label for="fileSelect">Select file from inputs/ folder:</label>
-                <select id="fileSelect">
-                    <option value="">Choose a file...</option>
-                </select>
+                <label for="fileInput">Select file from your computer:</label>
+                <input type="file" id="fileInput" accept=".csv,.json,.txt,.rohub">
                 <button onclick="loadSelectedFile()">📂 Load File</button>
             </div>
             
@@ -181,6 +182,17 @@
 1880,13.8
 1881,13.9
 1882,13.7"></textarea>
+            </div>
+            
+            <div class="input-group">
+                <label for="separator">Data separator:</label>
+                <select id="separator">
+                    <option value=",">Comma (,)</option>
+                    <option value=";">Semicolon (;)</option>
+                    <option value="\t">Tab</option>
+                    <option value="|">Pipe (|)</option>
+                    <option value="auto">Auto-detect</option>
+                </select>
             </div>
             
             <button onclick="parseData()">📊 Parse Data</button>
@@ -217,10 +229,25 @@
                 <div class="input-group">
                     <label for="colormap">Colormap:</label>
                     <select id="colormap">
-                        <option value="classic">Classic (Blue-Red)</option>
+                        <option value="RdYlBu_r">Classic (Blue-Red)</option>
                         <option value="viridis">Viridis</option>
                         <option value="plasma">Plasma</option>
+                        <option value="inferno">Inferno</option>
+                        <option value="magma">Magma</option>
+                        <option value="turbo">Turbo</option>
                         <option value="coolwarm">Cool-Warm</option>
+                        <option value="spectral">Spectral</option>
+                        <option value="RdBu_r">Red-Blue (Diverging)</option>
+                        <option value="BrBG">Brown-Green</option>
+                        <option value="PiYG">Pink-Green</option>
+                        <option value="PRGn">Purple-Green</option>
+                        <option value="puor">Purple-Orange</option>
+                        <option value="rdgy">Red-Gray</option>
+                        <option value="blues">Blues</option>
+                        <option value="reds">Reds</option>
+                        <option value="oranges">Oranges</option>
+                        <option value="greens">Greens</option>
+                        <option value="purples">Purples</option>
                     </select>
                 </div>
                 
@@ -267,26 +294,6 @@
         let data = [];
         let canvas, ctx, tooltip;
         
-        // Color schemes
-        const colorSchemes = {
-            classic: {
-                colors: [[8, 81, 156], [255, 255, 255], [165, 15, 21]],
-                positions: [0, 0.5, 1]
-            },
-            viridis: {
-                colors: [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]],
-                positions: [0, 0.25, 0.5, 0.75, 1]
-            },
-            plasma: {
-                colors: [[13, 8, 135], [84, 2, 163], [139, 10, 165], [185, 50, 137], [219, 92, 104], [244, 136, 73], [254, 188, 43], [240, 249, 33]],
-                positions: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1]
-            },
-            coolwarm: {
-                colors: [[59, 76, 192], [144, 178, 254], [221, 220, 219], [245, 156, 125], [180, 4, 38]],
-                positions: [0, 0.25, 0.5, 0.75, 1]
-            }
-        };
-        
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             canvas = document.getElementById('canvas');
@@ -298,77 +305,16 @@
             
             canvas.addEventListener('mousemove', handleMouseMove);
             canvas.addEventListener('mouseleave', hideTooltip);
-            
-            // Load available files from inputs/ folder
-            loadAvailableFiles();
+            canvas.addEventListener('click', handleCanvasClick);
             
             showStatus('Ready to load data', '');
         });
         
-        async function loadAvailableFiles() {
-            const fileSelect = document.getElementById('fileSelect');
-            
-            // List of files that should be in the inputs/ folder
-            const expectedFiles = [
-                'global_temperature.csv',
-                'climate_data.rohub',
-                'temperature_anomalies.csv',
-                'sample_data.json',
-                'warming_data.csv'
-            ];
-            
-            // Clear existing options
-            fileSelect.innerHTML = '<option value="">Choose a file...</option>';
-            
-            // Add expected files to dropdown
-            expectedFiles.forEach(filename => {
-                const option = document.createElement('option');
-                option.value = `inputs/${filename}`;
-                option.textContent = filename;
-                fileSelect.appendChild(option);
-            });
-            
-            // Try to detect what files actually exist by attempting to fetch them
-            showStatus('Scanning inputs/ folder for available files...', '');
-            
-            for (const filename of expectedFiles) {
-                try {
-                    const response = await fetch(`inputs/${filename}`, { method: 'HEAD' });
-                    if (response.ok) {
-                        // File exists - mark it as available
-                        const option = fileSelect.querySelector(`option[value="inputs/${filename}"]`);
-                        if (option) {
-                            option.textContent = `✅ ${filename}`;
-                            option.style.color = '#28a745';
-                        }
-                    } else {
-                        // File doesn't exist - mark as unavailable
-                        const option = fileSelect.querySelector(`option[value="inputs/${filename}"]`);
-                        if (option) {
-                            option.textContent = `❌ ${filename} (not found)`;
-                            option.style.color = '#dc3545';
-                            option.disabled = true;
-                        }
-                    }
-                } catch (error) {
-                    // File doesn't exist or network error
-                    const option = fileSelect.querySelector(`option[value="inputs/${filename}"]`);
-                    if (option) {
-                        option.textContent = `❌ ${filename} (not found)`;
-                        option.style.color = '#dc3545';
-                        option.disabled = true;
-                    }
-                }
-            }
-            
-            showStatus('File scan complete. Select a file to load.', '');
-        }
-        
         async function loadSelectedFile() {
-            const fileSelect = document.getElementById('fileSelect');
-            const selectedFile = fileSelect.value;
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
             
-            if (!selectedFile) {
+            if (!file) {
                 showStatus('Please select a file first', 'error');
                 return;
             }
@@ -376,13 +322,8 @@
             showStatus('Loading file...', '');
             
             try {
-                const response = await fetch(selectedFile);
-                if (!response.ok) {
-                    throw new Error(`File not found: ${selectedFile}`);
-                }
-                
-                const content = await response.text();
-                const filename = selectedFile.split('/').pop();
+                const content = await file.text();
+                const filename = file.name;
                 const extension = filename.split('.').pop().toLowerCase();
                 
                 console.log(`📁 Loading file: ${filename} (${extension})`);
@@ -540,16 +481,30 @@
             }
             
             try {
+                const selectedSeparator = document.getElementById('separator').value;
+                let separator = selectedSeparator;
+                
+                // Auto-detect separator if selected
+                if (selectedSeparator === 'auto') {
+                    separator = detectSeparator(csvText);
+                    console.log(`🔍 Auto-detected separator: "${separator}"`);
+                }
+                
+                // Handle tab separator
+                if (separator === '\\t') {
+                    separator = '\t';
+                }
+                
                 const lines = csvText.split('\n').filter(line => line.trim());
                 if (lines.length < 2) {
                     throw new Error('Need at least header and one data row');
                 }
                 
-                const headers = lines[0].split(',').map(h => h.trim());
+                const headers = lines[0].split(separator).map(h => h.trim());
                 data = [];
                 
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim());
+                    const values = lines[i].split(separator).map(v => v.trim());
                     if (values.length === headers.length) {
                         const row = {};
                         headers.forEach((header, index) => {
@@ -562,11 +517,37 @@
                 }
                 
                 updateColumnOptions(headers);
-                showStatus(`Parsed ${data.length} rows with ${headers.length} columns`, 'success');
+                const sepName = selectedSeparator === 'auto' ? `auto-detected (${separator === '\t' ? 'tab' : separator})` : selectedSeparator;
+                showStatus(`Parsed ${data.length} rows with ${headers.length} columns using ${sepName} separator`, 'success');
                 
             } catch (error) {
                 showStatus(`Parse error: ${error.message}`, 'error');
             }
+        }
+        
+        function detectSeparator(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            if (lines.length < 2) return ',';
+            
+            const separators = [',', ';', '\t', '|'];
+            const firstLine = lines[0];
+            const secondLine = lines[1];
+            
+            // Count occurrences of each separator in first two lines
+            const scores = separators.map(sep => {
+                const firstCount = (firstLine.match(new RegExp(sep === '\t' ? '\\t' : '\\' + sep, 'g')) || []).length;
+                const secondCount = (secondLine.match(new RegExp(sep === '\t' ? '\\t' : '\\' + sep, 'g')) || []).length;
+                
+                // Good separator should have same count in header and data rows, and > 0
+                if (firstCount > 0 && firstCount === secondCount) {
+                    return { separator: sep, score: firstCount };
+                }
+                return { separator: sep, score: 0 };
+            });
+            
+            // Return separator with highest score, fallback to comma
+            const best = scores.reduce((max, current) => current.score > max.score ? current : max);
+            return best.score > 0 ? best.separator : ',';
         }
         
         function updateColumnOptions(headers) {
@@ -676,6 +657,16 @@
             const maxVal = Math.max(...values);
             const avgVal = values.reduce((a, b) => a + b, 0) / values.length;
             
+            // Store data for interactivity
+            window.stripeData = {
+                data: filteredData,
+                xCol: xCol,
+                yCol: yCol,
+                stripeWidth: canvas.width / filteredData.length,
+                minVal: minVal,
+                maxVal: maxVal
+            };
+            
             // Update legend
             updateLegend(colormap, minVal, maxVal, avgVal);
             
@@ -684,41 +675,69 @@
             filteredData.forEach((point, index) => {
                 const value = point[yCol];
                 const normalized = (value - minVal) / (maxVal - minVal);
-                const color = getColor(normalized, colormap);
+                const colorScale = createColorScale(colormap);
+                const color = getColor(normalized, colorScale);
                 
                 ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
                 ctx.fillRect(index * stripeWidth, 0, stripeWidth, canvas.height);
             });
         }
         
-        function getColor(value, scheme) {
-            const colors = colorSchemes[scheme].colors;
-            const positions = colorSchemes[scheme].positions;
-            
-            value = Math.max(0, Math.min(1, value));
-            
-            let i = 0;
-            while (i < positions.length - 1 && value > positions[i + 1]) {
-                i++;
+        function getColor(normalizedValue, colorScale) {
+            // Use the already created Chroma.js color scale
+            try {
+                const color = colorScale(normalizedValue);
+                const rgb = color.rgb();
+                return [Math.round(rgb[0]), Math.round(rgb[1]), Math.round(rgb[2])];
+            } catch (error) {
+                // Fallback to a simple blue-red scale if colormap fails
+                console.warn(`Colormap error, using fallback`);
+                const r = Math.round(255 * normalizedValue);
+                const b = Math.round(255 * (1 - normalizedValue));
+                return [r, 0, b];
             }
-            
-            if (i === positions.length - 1) return colors[i];
-            
-            const t = (value - positions[i]) / (positions[i + 1] - positions[i]);
-            const c1 = colors[i];
-            const c2 = colors[i + 1];
-            
-            return [
-                Math.round(c1[0] + (c2[0] - c1[0]) * t),
-                Math.round(c1[1] + (c2[1] - c1[1]) * t),
-                Math.round(c1[2] + (c2[2] - c1[2]) * t)
-            ];
         }
         
-        function updateLegend(scheme, minVal, maxVal, avgVal) {
-            const low = getColor(0, scheme);
-            const mid = getColor(0.5, scheme);
-            const high = getColor(1, scheme);
+        function createColorScale(colormap) {
+            // Map common colormap names to Chroma.js equivalents
+            const colormapMapping = {
+                'RdYlBu_r': ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffcc', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026'],
+                'viridis': 'viridis',
+                'plasma': 'plasma',
+                'inferno': 'inferno', 
+                'magma': 'magma',
+                'turbo': 'turbo',
+                'coolwarm': ['#3b4cc0', '#6788ee', '#9abbff', '#c9d7f0', '#dddddd', '#f0c9c9', '#ff9a9a', '#ee6788', '#c03b3b'],
+                'spectral': 'spectral',
+                'RdBu_r': ['#053061', '#2166ac', '#4393c3', '#92c5de', '#d1e5f0', '#f7f7f7', '#fddbc7', '#f4a582', '#d6604d', '#b2182b', '#67001f'],
+                'BrBG': ['#543005', '#8c510a', '#bf812d', '#dfc27d', '#f6e8c3', '#f5f5f5', '#c7eae5', '#80cdc1', '#35978f', '#01665e', '#003c30'],
+                'PiYG': ['#8e0152', '#c51b7d', '#de77ae', '#f1b6da', '#fde0ef', '#f7f7f7', '#e6f5d0', '#b8e186', '#7fbc41', '#4d9221', '#276419'],
+                'PRGn': ['#40004b', '#762a83', '#9970ab', '#c2a5cf', '#e7d4e8', '#f7f7f7', '#d9f0d3', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
+                'puor': ['#7f3b08', '#b35806', '#e08214', '#fdb863', '#fee0b6', '#f7f7f7', '#d8daeb', '#b2abd2', '#8073ac', '#542788', '#2d004b'],
+                'rdgy': ['#67001f', '#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#ffffff', '#e0e0e0', '#bababa', '#878787', '#4d4d4d', '#1a1a1a'],
+                'blues': 'blues',
+                'reds': 'reds', 
+                'oranges': 'oranges',
+                'greens': 'greens',
+                'purples': 'purples'
+            };
+            
+            const mappedColormap = colormapMapping[colormap] || colormap;
+            
+            try {
+                return chroma.scale(mappedColormap);
+            } catch (error) {
+                console.warn(`Failed to create colormap '${colormap}', using default`);
+                return chroma.scale(['blue', 'white', 'red']);
+            }
+        }
+        
+        function updateLegend(colormap, minVal, maxVal, avgVal) {
+            const colorScale = createColorScale(colormap);
+            
+            const low = getColor(0, colorScale);
+            const mid = getColor(0.5, colorScale);
+            const high = getColor(1, colorScale);
             
             document.getElementById('legendLow').style.background = `rgb(${low.join(',')})`;
             document.getElementById('legendMid').style.background = `rgb(${mid.join(',')})`;
@@ -730,11 +749,109 @@
         }
         
         function handleMouseMove(event) {
-            // Tooltip functionality would go here
+            if (!window.stripeData) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            
+            // Calculate which stripe we're hovering over
+            const stripeIndex = Math.floor(x / window.stripeData.stripeWidth);
+            
+            if (stripeIndex >= 0 && stripeIndex < window.stripeData.data.length) {
+                const dataPoint = window.stripeData.data[stripeIndex];
+                const xValue = dataPoint[window.stripeData.xCol];
+                const yValue = dataPoint[window.stripeData.yCol];
+                
+                // Simple positioning: just offset from mouse position
+                const tooltipX = event.pageX + 10;
+                const tooltipY = event.pageY - 30;
+                
+                // Show tooltip
+                tooltip.style.display = 'block';
+                tooltip.style.opacity = '1';
+                tooltip.style.left = tooltipX + 'px';
+                tooltip.style.top = tooltipY + 'px';
+                tooltip.style.transform = 'none';
+                
+                // Format the tooltip content
+                let xDisplay = xValue;
+                if (typeof xValue === 'number' || String(xValue).match(/^\d{4}$/)) {
+                    xDisplay = xValue;
+                } else {
+                    const yearMatch = String(xValue).match(/(\d{4})/);
+                    if (yearMatch) xDisplay = yearMatch[1];
+                }
+                
+                const yDisplay = typeof yValue === 'number' ? yValue.toFixed(2) : yValue;
+                
+                tooltip.innerHTML = `${window.stripeData.xCol}: ${xDisplay}<br>${window.stripeData.yCol}: ${yDisplay}`;
+                
+                // Highlight the current stripe
+                redrawWithHighlight(stripeIndex);
+                
+                // Debug log
+                console.log(`Showing tooltip at ${tooltipX}, ${tooltipY} for stripe ${stripeIndex}`);
+            } else {
+                hideTooltip();
+                redrawWithoutHighlight();
+            }
+        }
+        
+        function redrawWithHighlight(highlightIndex) {
+            if (!window.stripeData) return;
+            
+            const { data, xCol, yCol, stripeWidth, minVal, maxVal } = window.stripeData;
+            const colormap = document.getElementById('colormap').value;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            data.forEach((point, index) => {
+                const value = point[yCol];
+                const normalized = (value - minVal) / (maxVal - minVal);
+                const colorScale = createColorScale(colormap);
+                const color = getColor(normalized, colorScale);
+                
+                if (index === highlightIndex) {
+                    // Highlight the current stripe with a brighter version
+                    const brightColor = color.map(c => Math.min(255, c + 40));
+                    ctx.fillStyle = `rgb(${brightColor[0]}, ${brightColor[1]}, ${brightColor[2]})`;
+                    ctx.fillRect(index * stripeWidth, 0, stripeWidth, canvas.height);
+                    
+                    // Add a border to the highlighted stripe
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(index * stripeWidth, 0, stripeWidth, canvas.height);
+                } else {
+                    ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                    ctx.fillRect(index * stripeWidth, 0, stripeWidth, canvas.height);
+                }
+            });
+        }
+        
+        function redrawWithoutHighlight() {
+            if (!window.stripeData) return;
+            
+            const { data, xCol, yCol, stripeWidth, minVal, maxVal } = window.stripeData;
+            const colormap = document.getElementById('colormap').value;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            data.forEach((point, index) => {
+                const value = point[yCol];
+                const normalized = (value - minVal) / (maxVal - minVal);
+                const colorScale = createColorScale(colormap);
+                const color = getColor(normalized, colorScale);
+                
+                ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                ctx.fillRect(index * stripeWidth, 0, stripeWidth, canvas.height);
+            });
         }
         
         function hideTooltip() {
             tooltip.style.opacity = '0';
+            tooltip.style.display = 'none';
+            tooltip.style.transform = '';
+            redrawWithoutHighlight();
         }
         
         function exportImage() {
@@ -743,6 +860,39 @@
             link.href = canvas.toDataURL();
             link.click();
             showStatus('Image exported!', 'success');
+        }
+        
+        function handleCanvasClick(event) {
+            if (!window.stripeData) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            
+            // Calculate which stripe was clicked
+            const stripeIndex = Math.floor(x / window.stripeData.stripeWidth);
+            
+            if (stripeIndex >= 0 && stripeIndex < window.stripeData.data.length) {
+                const dataPoint = window.stripeData.data[stripeIndex];
+                const xValue = dataPoint[window.stripeData.xCol];
+                const yValue = dataPoint[window.stripeData.yCol];
+                
+                // Format the values for display
+                let xDisplay = xValue;
+                if (typeof xValue === 'number' || String(xValue).match(/^\d{4}$/)) {
+                    xDisplay = xValue;
+                } else {
+                    const yearMatch = String(xValue).match(/(\d{4})/);
+                    if (yearMatch) xDisplay = yearMatch[1];
+                }
+                
+                const yDisplay = typeof yValue === 'number' ? yValue.toFixed(3) : yValue;
+                
+                // Show detailed information
+                showStatus(`📊 ${window.stripeData.xCol}: ${xDisplay} | ${window.stripeData.yCol}: ${yDisplay}`, 'success');
+                
+                // Log to console for developers
+                console.log('Clicked data point:', dataPoint);
+            }
         }
     </script>
 </body>
